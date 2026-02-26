@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smart-aac-db
+    environment:
+      POSTGRES_DB: smart_aac
+      POSTGRES_USER: smart_aac
+      POSTGRES_PASSWORD: smart_aac_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smart_aac"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
