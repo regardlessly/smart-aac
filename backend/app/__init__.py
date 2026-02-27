@@ -41,11 +41,7 @@ def create_app(config_name=None):
         with app.app_context():
             try:
                 from .services.camera_worker import CameraWorker
-                worker = CameraWorker(
-                    app,
-                    interval_seconds=app.config.get(
-                        'CAMERA_WORKER_INTERVAL', 180),
-                )
+                worker = CameraWorker(app)
                 worker.start()
                 app.camera_worker = worker
             except Exception as e:

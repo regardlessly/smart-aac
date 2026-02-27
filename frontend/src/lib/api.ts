@@ -30,4 +30,40 @@ export const api = {
   cameras: () => apiFetch<import('./types').Camera[]>('/api/cameras'),
   latestSnapshots: () =>
     apiFetch<import('./types').CCTVSnapshot[]>('/api/cameras/snapshots/latest'),
+  cctvStatus: () =>
+    apiFetch<import('./types').FRStatus>('/api/cameras/status'),
+  addKnownFace: async (name: string, image: File) => {
+    const form = new FormData()
+    form.append('name', name)
+    form.append('image', image)
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+    const res = await fetch(`${API_BASE}/api/cameras/known-faces`, {
+      method: 'POST',
+      body: form,
+    })
+    if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`)
+    return res.json()
+  },
+  removeKnownFace: (name: string) =>
+    apiFetch(`/api/cameras/known-faces/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    }),
+  camerasAdmin: () =>
+    apiFetch<import('./types').Camera[]>('/api/cameras/admin'),
+  createCamera: (data: { name: string; rtsp_url?: string; location?: string; enabled?: boolean }) =>
+    apiFetch<import('./types').Camera>('/api/cameras', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCamera: (id: number, data: Partial<{ name: string; rtsp_url: string; location: string; enabled: boolean }>) =>
+    apiFetch<import('./types').Camera>(`/api/cameras/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteCamera: (id: number) =>
+    apiFetch<{ status: string; id: number }>(`/api/cameras/${id}`, {
+      method: 'DELETE',
+    }),
+  knownFaces: () =>
+    apiFetch<{ name: string; image_count: number }[]>('/api/cameras/known-faces'),
 }

@@ -29,6 +29,12 @@ export const NAV_SECTIONS = [
       { label: 'KPI Analytics', href: '/analytics', icon: 'chart' },
     ],
   },
+  {
+    title: 'System',
+    items: [
+      { label: 'Settings', href: '/settings', icon: 'settings' },
+    ],
+  },
 ]
 
 export const ALERT_COLORS = {

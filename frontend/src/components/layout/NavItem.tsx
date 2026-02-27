@@ -21,6 +21,7 @@ const ICONS: Record<string, string> = {
   tablet: '📱',
   door: '🚪',
   chart: '📊',
+  settings: '⚙️',
 }
 
 export default function NavItem({ label, href, icon, badge }: NavItemProps) {

@@ -25,6 +25,12 @@ class Camera(db.Model):
             'enabled': self.enabled,
         }
 
+    def to_admin_dict(self):
+        """Include rtsp_url for admin/settings pages."""
+        d = self.to_dict()
+        d['rtsp_url'] = self.rtsp_url
+        return d
+
 
 class CCTVSnapshot(db.Model):
     __tablename__ = 'cctv_snapshots'

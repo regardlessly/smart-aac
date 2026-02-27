@@ -22,6 +22,12 @@ class Config:
         os.path.join(basedir, '..', '..', 'face_recognizer')
     )
 
+    # FaceRecognizer tuning (see ~/face_recognizer/face_recognizer.py)
+    FR_CAPTURE_INTERVAL = int(
+        os.environ.get('FR_CAPTURE_INTERVAL', '2'))
+    FR_ANALYSE_EVERY = int(
+        os.environ.get('FR_ANALYSE_EVERY', '5'))
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

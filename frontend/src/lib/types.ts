@@ -116,5 +116,24 @@ export interface CCTVSnapshot {
 
 export interface SSEEvent {
   type: 'snapshot' | 'detection' | 'alert' | 'heartbeat'
+  camera_id?: number
+  camera_name?: string
+  person?: string
+  person_type?: 'known' | 'unknown'
+  confidence?: number
+  timestamp?: string
+  crop?: string | null
   [key: string]: unknown
+}
+
+export interface FRStatus {
+  status: 'running' | 'stopped' | 'error'
+  uptime_seconds?: number
+  total_captures?: number
+  total_analyses?: number
+  total_detections?: number
+  known_persons_detected?: Record<string, number>
+  unknown_persons_count?: number
+  total_embeddings?: number
+  cameras?: string[]
 }
