@@ -1,7 +1,10 @@
 import json
 import time
 import threading
-from flask import Blueprint, Response
+from flask import Blueprint, Response, request, jsonify
+
+from .auth import _decode_token
+from ..models.user import User
 
 bp = Blueprint('sse', __name__)
 
@@ -18,7 +21,29 @@ def push_event(event_data):
 
 @bp.route('/api/events')
 def events():
-    """Server-Sent Events stream for real-time updates."""
+    """Server-Sent Events stream for real-time updates.
+
+    SSE (EventSource) doesn't support custom headers, so we accept
+    the token as a query parameter: /api/events?token=<jwt>
+    """
+    token = request.args.get('token', '')
+    if not token:
+        # Also check Authorization header (for non-EventSource clients)
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ', 1)[1]
+
+    if not token:
+        return jsonify({'error': 'Missing token'}), 401
+
+    payload = _decode_token(token)
+    if payload is None:
+        return jsonify({'error': 'Token expired or invalid'}), 401
+
+    user = User.query.get(payload.get('user_id'))
+    if user is None:
+        return jsonify({'error': 'User not found'}), 401
+
     def generate():
         idx = 0
         keepalive_counter = 0

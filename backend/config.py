@@ -11,20 +11,30 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     CORS_ORIGINS = ['http://localhost:3000']
 
+    # Authentication / JWT (fixed default for dev; set JWT_SECRET_KEY env var in production)
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-secret-change-in-production')
+    JWT_EXPIRY_HOURS = int(os.environ.get('JWT_EXPIRY_HOURS', '24'))
+
+    # Odoo backend (for login proxy)
+    ODOO_BASE_URL = os.environ.get(
+        'ODOO_BASE_URL', 'https://caritahub-aac-dev.int.weeswares.com')
+    ODOO_DB_NAME = os.environ.get('ODOO_DB_NAME', 'caritahub-aac-dev')
+    ODOO_CENTRE_ID = os.environ.get('ODOO_CENTRE_ID', '9')
+
     # Camera worker (default off for dev without cameras)
     CAMERA_WORKER_ENABLED = os.environ.get(
         'CAMERA_WORKER_ENABLED', 'false').lower() == 'true'
     CAMERA_WORKER_INTERVAL = int(
         os.environ.get('CAMERA_WORKER_INTERVAL', '5'))
 
-    # Path to the existing face_recognizer POC
-    FACE_RECOGNIZER_DIR = os.path.abspath(
-        os.path.join(basedir, '..', '..', 'face_recognizer')
+    # Data directory for known_faces, captures, output, models
+    FACE_DATA_DIR = os.path.abspath(
+        os.path.join(basedir, '..', 'data')
     )
 
-    # FaceRecognizer tuning (see ~/face_recognizer/face_recognizer.py)
+    # FaceRecognizer tuning
     FR_CAPTURE_INTERVAL = int(
-        os.environ.get('FR_CAPTURE_INTERVAL', '2'))
+        os.environ.get('FR_CAPTURE_INTERVAL', '5'))
     FR_ANALYSE_EVERY = int(
         os.environ.get('FR_ANALYSE_EVERY', '5'))
 

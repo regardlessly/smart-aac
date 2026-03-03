@@ -3,7 +3,6 @@
 from datetime import datetime, timezone
 
 from ..models.senior import Senior, SeniorPresence
-from ..models.room import Room
 
 
 class PresenceService:
@@ -12,7 +11,7 @@ class PresenceService:
     def update_from_face_results(face_results, camera, session):
         """Match face names to Senior records, update SeniorPresence."""
         now = datetime.now(timezone.utc)
-        room = Room.query.filter_by(camera_id=camera.id).first()
+        room = camera.room
 
         for result in face_results:
             if result['name'] == 'Stranger':
@@ -29,6 +28,15 @@ class PresenceService:
             else:
                 senior = Senior.query.filter_by(
                     name=result['name'], is_active=True).first()
+                if not senior:
+                    # Auto-create Senior for known faces (e.g. Odoo-synced)
+                    senior = Senior(
+                        name=result['name'],
+                        nric_last4='----',
+                        is_active=True,
+                    )
+                    session.add(senior)
+                    session.flush()  # get senior.id
                 if senior:
                     existing = SeniorPresence.query.filter_by(
                         senior_id=senior.id,

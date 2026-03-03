@@ -20,7 +20,7 @@ def create_app(config_name=None):
 
     # Import models so Alembic sees them
     from .models import (  # noqa: F401
-        senior, room, activity, alert, locker, kiosk_event, camera,
+        senior, room, activity, alert, locker, kiosk_event, camera, user,
     )
 
     # Register API blueprints

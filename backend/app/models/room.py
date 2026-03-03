@@ -6,8 +6,6 @@ class Room(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    camera_id = db.Column(
-        db.Integer, db.ForeignKey('cameras.id'), nullable=True)
     max_capacity = db.Column(db.Integer, default=20)
     current_occupancy = db.Column(db.Integer, default=0)
 
@@ -17,7 +15,6 @@ class Room(db.Model):
         return {
             'id': self.id,
             'name': self.name,
-            'camera_id': self.camera_id,
             'max_capacity': self.max_capacity,
             'current_occupancy': self.current_occupancy,
         }

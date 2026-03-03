@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import StatCard from '@/components/dashboard/StatCard'
@@ -17,9 +17,17 @@ import { api } from '@/lib/api'
 
 export default function DashboardPage() {
   const data = useDashboard()
+  // Throttle SSE-driven refresh to at most once every 10s
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshRef = useRef(data.refresh)
+  refreshRef.current = data.refresh
   const { connected } = useSSE(() => {
-    // Refresh on any SSE event
-    data.refresh()
+    if (!refreshTimerRef.current) {
+      refreshRef.current()
+      refreshTimerRef.current = setTimeout(() => {
+        refreshTimerRef.current = null
+      }, 10000)
+    }
   })
 
   const handleAcknowledge = useCallback(async (id: number) => {

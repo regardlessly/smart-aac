@@ -2,11 +2,13 @@ from flask import Blueprint, jsonify, request
 
 from ..extensions import db
 from ..models.alert import Alert
+from .auth import login_required
 
 bp = Blueprint('alerts', __name__)
 
 
 @bp.route('/api/alerts')
+@login_required
 def list_alerts():
     acknowledged = request.args.get('acknowledged')
     alert_type = request.args.get('type')
@@ -25,6 +27,7 @@ def list_alerts():
 
 
 @bp.route('/api/alerts/count')
+@login_required
 def alert_count():
     total = Alert.query.filter_by(acknowledged=False).count()
     critical = Alert.query.filter_by(
@@ -43,6 +46,7 @@ def alert_count():
 
 
 @bp.route('/api/alerts/<int:alert_id>/acknowledge', methods=['PUT'])
+@login_required
 def acknowledge_alert(alert_id):
     alert = Alert.query.get_or_404(alert_id)
     alert.acknowledged = True

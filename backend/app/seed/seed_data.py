@@ -66,19 +66,26 @@ def run_seed(force=False):
 
     # ── Rooms ────────────────────────────────────────────────────
     rooms = [
-        Room(name='Multi-purpose Hall', camera_id=cameras[0].id,
+        Room(name='Multi-purpose Hall',
              max_capacity=15, current_occupancy=12),
-        Room(name='Activity Room A', camera_id=cameras[1].id,
+        Room(name='Activity Room A',
              max_capacity=10, current_occupancy=6),
-        Room(name='Activity Room B', camera_id=cameras[2].id,
+        Room(name='Activity Room B',
              max_capacity=10, current_occupancy=3),
-        Room(name='Kitchen Area', camera_id=None,
+        Room(name='Kitchen Area',
              max_capacity=6, current_occupancy=2),
-        Room(name='Reading Corner', camera_id=None,
+        Room(name='Reading Corner',
              max_capacity=8, current_occupancy=0),
-        Room(name='Quiet Room', camera_id=None,
+        Room(name='Quiet Room',
              max_capacity=4, current_occupancy=0),
     ]
+    db.session.add_all(rooms)
+    db.session.flush()
+
+    # Link cameras to rooms
+    cameras[0].room_id = rooms[0].id  # Hall
+    cameras[1].room_id = rooms[1].id  # Room A
+    cameras[2].room_id = rooms[2].id  # Room B
     db.session.add_all(rooms)
     db.session.flush()
 
@@ -141,7 +148,7 @@ def run_seed(force=False):
         p = SeniorPresence(
             senior_id=seniors[senior_idx].id,
             room_id=rooms[room_idx].id,
-            camera_id=rooms[room_idx].camera_id,
+            camera_id=cameras[room_idx].id if room_idx < len(cameras) else None,
             arrived_at=arrived,
             last_seen_at=arrived + timedelta(minutes=15),
             status='identified',

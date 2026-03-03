@@ -2,11 +2,13 @@ from flask import Blueprint, jsonify, request
 from datetime import date, datetime
 
 from ..models.kiosk_event import KioskEvent
+from .auth import login_required
 
 bp = Blueprint('kiosk_events', __name__)
 
 
 @bp.route('/api/kiosk-events')
+@login_required
 def list_kiosk_events():
     date_filter = request.args.get('date')
     limit = request.args.get('limit', 50, type=int)

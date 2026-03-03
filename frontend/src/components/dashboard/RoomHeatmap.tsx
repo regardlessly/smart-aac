@@ -31,8 +31,15 @@ export default function RoomHeatmap({ rooms }: Props) {
                 {room.occupancy}
                 <span className="text-xs font-normal text-muted">/{room.max_capacity}</span>
               </div>
+              {room.occupancy > 0 && (
+                <div className="text-[10px] text-muted mt-0.5">
+                  {room.identified > 0 && <span>{room.identified} known</span>}
+                  {room.identified > 0 && room.strangers > 0 && <span> · </span>}
+                  {room.strangers > 0 && <span>{room.strangers} unknown</span>}
+                </div>
+              )}
               {/* Mini progress bar */}
-              <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
+              <div className="mt-1.5 h-1.5 bg-white/60 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
                     room.color_level === 'high' ? 'bg-coral' :

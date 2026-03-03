@@ -11,8 +11,11 @@ class Camera(db.Model):
     rtsp_url = db.Column(db.String(255), nullable=True)
     channel = db.Column(db.Integer, nullable=True)
     location = db.Column(db.String(100), nullable=True)
+    room_id = db.Column(
+        db.Integer, db.ForeignKey('rooms.id'), nullable=True)
     enabled = db.Column(db.Boolean, default=True)
 
+    room = db.relationship('Room', backref='cameras')
     snapshots = db.relationship(
         'CCTVSnapshot', backref='camera', lazy='dynamic')
 
@@ -22,6 +25,8 @@ class Camera(db.Model):
             'name': self.name,
             'channel': self.channel,
             'location': self.location,
+            'room_id': self.room_id,
+            'room_name': self.room.name if self.room else None,
             'enabled': self.enabled,
         }
 
@@ -42,6 +47,7 @@ class CCTVSnapshot(db.Model):
         db.DateTime, default=lambda: datetime.now(timezone.utc))
     identified_count = db.Column(db.Integer, default=0)
     unidentified_count = db.Column(db.Integer, default=0)
+    identified_names = db.Column(db.Text, nullable=True)  # JSON list
     snapshot_path = db.Column(db.String(255), nullable=True)
     snapshot_b64 = db.Column(db.Text, nullable=True)
 
@@ -50,7 +56,7 @@ class CCTVSnapshot(db.Model):
             'id': self.id,
             'camera_id': self.camera_id,
             'camera_name': self.camera.name if self.camera else None,
-            'timestamp': self.timestamp.isoformat()
+            'timestamp': (self.timestamp.isoformat() + 'Z')
             if self.timestamp else None,
             'identified_count': self.identified_count,
             'unidentified_count': self.unidentified_count,

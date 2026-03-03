@@ -73,6 +73,12 @@ export function useDashboard(): DashboardData {
     fetchAll()
   }, [fetchAll])
 
+  // Poll every 10s as fallback when SSE is down
+  useEffect(() => {
+    const interval = setInterval(fetchAll, 10000)
+    return () => clearInterval(interval)
+  }, [fetchAll])
+
   return {
     stats, presences, heatmap, activities, alerts, alertCounts,
     lockers, kioskEvents, cameras, snapshots, loading, error, refresh: fetchAll,

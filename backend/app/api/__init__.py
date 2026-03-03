@@ -1,4 +1,5 @@
 def register_blueprints(app):
+    from .auth import bp as auth_bp
     from .dashboard import bp as dashboard_bp
     from .seniors import bp as seniors_bp
     from .rooms import bp as rooms_bp
@@ -9,6 +10,7 @@ def register_blueprints(app):
     from .cameras import bp as cameras_bp
     from .sse import bp as sse_bp
 
+    app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(seniors_bp)
     app.register_blueprint(rooms_bp)

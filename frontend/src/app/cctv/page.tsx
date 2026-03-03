@@ -44,7 +44,11 @@ export default function CCTVPage() {
   const [detections, setDetections] = useState<DetectionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const nextId = useRef(0)
+
+  // Track SSE detection IDs so polled data doesn't overwrite SSE data (which has crops)
+  const sseDetectionIds = useRef(new Set<string>())
 
   // Fetch initial data
   const fetchData = useCallback(async () => {
@@ -58,6 +62,7 @@ export default function CCTVPage() {
       setSnapshots(snaps)
       setStatus(st)
       setError(null)
+      setLastUpdated(new Date())
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load CCTV data')
     } finally {
@@ -65,34 +70,84 @@ export default function CCTVPage() {
     }
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  // Fetch recent detections from API (polling fallback)
+  const fetchDetections = useCallback(async () => {
+    try {
+      const data = await api.recentDetections()
+      setDetections(prev => {
+        // Merge: keep SSE detections (they have crops), add polled ones that are new
+        const existingKeys = new Set(prev.map(d => `${d.person}-${d.timestamp}`))
+        const newItems: DetectionItem[] = []
+        for (const d of data) {
+          const key = `${d.person}-${d.timestamp}`
+          if (!existingKeys.has(key) && !sseDetectionIds.current.has(key)) {
+            newItems.push({
+              id: nextId.current++,
+              person: d.person,
+              personType: d.personType,
+              cameraName: d.cameraName,
+              confidence: d.confidence,
+              timestamp: d.timestamp,
+              crop: d.crop,
+            })
+          }
+        }
+        if (newItems.length === 0) return prev
+        return [...newItems, ...prev].slice(0, 50)
+      })
+    } catch {
+      // silent
+    }
+  }, [])
 
-  // Poll status every 10 seconds
+  useEffect(() => { fetchData(); fetchDetections() }, [fetchData, fetchDetections])
+
+  // Poll cameras + status + snapshots + detections every 10 seconds
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const st = await api.cctvStatus()
+        const [cams, st, snaps] = await Promise.all([
+          api.cameras(),
+          api.cctvStatus(),
+          api.latestSnapshots(),
+        ])
+        setCameras(cams)
         setStatus(st)
-      } catch { /* ignore */ }
+        setSnapshots(snaps)
+        setError(null)
+        setLastUpdated(new Date())
+      } catch {
+        // silent — initial data still shown
+      }
+      fetchDetections()
     }, 10000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchDetections])
+
+  // Throttle snapshot refresh — at most once every 5s
+  const snapThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Handle SSE events
   const handleSSE = useCallback((event: SSEEvent) => {
     if (event.type === 'detection' && event.person) {
+      const ts = event.timestamp || new Date().toISOString()
+      const key = `${event.person}-${ts}`
+      sseDetectionIds.current.add(key)
       setDetections(prev => [{
         id: nextId.current++,
         person: event.person!,
         personType: (event.person_type as 'known' | 'unknown') || 'unknown',
         cameraName: event.camera_name || '',
         confidence: event.confidence || 0,
-        timestamp: event.timestamp || new Date().toISOString(),
+        timestamp: ts,
         crop: event.crop || null,
       }, ...prev].slice(0, 50))
     }
-    if (event.type === 'snapshot') {
-      api.latestSnapshots().then(setSnapshots).catch(() => {})
+    if (event.type === 'snapshot' && !snapThrottleRef.current) {
+      api.latestSnapshots().then(s => { setSnapshots(s); setLastUpdated(new Date()) }).catch(() => {})
+      snapThrottleRef.current = setTimeout(() => {
+        snapThrottleRef.current = null
+      }, 5000)
     }
   }, [])
 
@@ -149,6 +204,13 @@ export default function CCTVPage() {
               <p className="text-muted text-sm mt-0.5">
                 {cameras.filter(c => c.enabled).length} of {cameras.length} cameras configured
               </p>
+              {lastUpdated && (
+                <p className="text-xs text-muted mt-0.5">
+                  Last updated: {lastUpdated.toLocaleTimeString('en-SG', {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                  })}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <div className={`w-2.5 h-2.5 rounded-full ${
@@ -205,7 +267,7 @@ export default function CCTVPage() {
                   </div>
                   {/* Info bar */}
                   <div className="bg-navy-dark px-3 py-2 flex items-center justify-between text-xs">
-                    <span className="text-gray-400">{cam.location}</span>
+                    <span className="text-gray-400">{cam.room_name || cam.location || '—'}</span>
                     <div className="flex items-center gap-3">
                       {snap ? (
                         <>

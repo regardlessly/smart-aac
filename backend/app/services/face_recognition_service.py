@@ -1,6 +1,5 @@
-"""Bridge to the face_recognizer FaceRecognizer class.
+"""Bridge to the embedded face_recognizer module.
 
-Uses the plug-and-play FaceRecognizer module from ~/face_recognizer.
 FaceRecognizer manages its own camera threads, batch analysis,
 auto-learning, cross-batch re-identification, and session tracking.
 
@@ -11,7 +10,6 @@ This service is a singleton that:
   - Runs a periodic snapshot loop for the dashboard camera grid
 """
 
-import sys
 import os
 import logging
 import threading
@@ -31,10 +29,9 @@ def _makedirs_exist_ok(name, mode=0o777, exist_ok=False):
 
 os.makedirs = _makedirs_exist_ok
 
-# Default path to the existing face_recognizer project
-_DEFAULT_FR_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', '..', '..',
-                 'face_recognizer')
+# Default data directory (within smart-aac project)
+_DEFAULT_DATA_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', '..', '..', 'data')
 )
 
 
@@ -51,17 +48,9 @@ class FaceRecognitionService:
     _lock = threading.Lock()
     _camera_id_map = {}       # camera name -> Camera.id
     _snapshot_thread_ref = None
-    _fr_dir = None
+    _data_dir = None
 
     # ── Lifecycle ─────────────────────────────────────────────────
-
-    @classmethod
-    def _ensure_path(cls):
-        """Add face_recognizer directory to sys.path if needed."""
-        fr_dir = cls._fr_dir or _DEFAULT_FR_DIR
-        if fr_dir not in sys.path:
-            sys.path.insert(0, fr_dir)
-        return fr_dir
 
     @classmethod
     def start(cls, app):
@@ -72,14 +61,12 @@ class FaceRecognitionService:
                 return
 
             cls._app = app
-            cls._fr_dir = app.config.get('FACE_RECOGNIZER_DIR', _DEFAULT_FR_DIR)
+            cls._data_dir = app.config.get('FACE_DATA_DIR', _DEFAULT_DATA_DIR)
 
         # Everything below needs app context for DB access
         with app.app_context():
             from ..models.camera import Camera
-
-            fr_dir = cls._ensure_path()
-            from face_recognizer import FaceRecognizer
+            from ..lib.face_recognizer import FaceRecognizer
 
             # Build camera config from database
             db_cameras = Camera.query.filter_by(enabled=True).all()
@@ -102,8 +89,10 @@ class FaceRecognitionService:
                     cls._running = False
                 return
 
-            known_faces_dir = os.path.join(fr_dir, 'known_faces')
-            model_path = os.path.join(fr_dir, 'yolov8n.pt')
+            data_dir = cls._data_dir or _DEFAULT_DATA_DIR
+            known_faces_dir = os.path.join(data_dir, 'known_faces')
+            os.makedirs(known_faces_dir, exist_ok=True)
+            model_path = os.path.join(data_dir, 'models', 'yolov8n.pt')
 
             with cls._lock:
                 cls._camera_id_map = camera_id_map
@@ -119,7 +108,7 @@ class FaceRecognitionService:
                     analyse_every=app.config.get(
                         'FR_ANALYSE_EVERY', 5),
                     det_size=(640, 640),
-                    output_dir=os.path.join(fr_dir, 'output'),
+                    output_dir=os.path.join(data_dir, 'output'),
                     auto_learn=True,
                 )
                 cls._instance.start()
@@ -183,6 +172,15 @@ class FaceRecognitionService:
             if cls._instance:
                 cls._instance.remove_known_face(name)
                 logger.info('Removed known face: %s', name)
+
+    @classmethod
+    def reload_known_faces(cls):
+        """Reload known face embeddings from disk (batch operation)."""
+        with cls._lock:
+            if cls._instance and cls._instance._engine is not None:
+                cls._instance._engine._load_known_faces()
+                logger.info('Reloaded known faces: %d embeddings',
+                            len(cls._instance._engine.known_embeddings))
 
     # ── Detection callback ────────────────────────────────────────
 
@@ -265,11 +263,7 @@ class FaceRecognitionService:
         # Wait for the engine to be ready
         time.sleep(10)
 
-        fr_dir = cls._fr_dir or _DEFAULT_FR_DIR
-        if fr_dir not in sys.path:
-            sys.path.insert(0, fr_dir)
-
-        from face_recognizer import capture_frame, annotate_frame
+        from ..lib.face_recognizer import capture_frame, annotate_frame
 
         while cls._running:
             try:
@@ -304,9 +298,10 @@ class FaceRecognitionService:
                                 annotated = annotate_frame(
                                     frame, face_results, cam_name,
                                     person_boxes=engine._last_persons)
-                                identified = len([
-                                    r for r in face_results
-                                    if r['name'] != 'Stranger'])
+                                id_names = [
+                                    r['name'] for r in face_results
+                                    if r['name'] != 'Stranger']
+                                identified = len(id_names)
                                 unidentified = len([
                                     r for r in face_results
                                     if r['name'] == 'Stranger'])
@@ -314,6 +309,7 @@ class FaceRecognitionService:
                                 annotated = frame
                                 identified = 0
                                 unidentified = 0
+                                id_names = []
 
                             import cv2
                             _, jpeg = cv2.imencode(
@@ -322,10 +318,13 @@ class FaceRecognitionService:
                             b64 = base64.b64encode(
                                 jpeg).decode('ascii')
 
+                            import json as _json
                             snapshot = CCTVSnapshot(
                                 camera_id=cam_id,
                                 identified_count=identified,
                                 unidentified_count=unidentified,
+                                identified_names=_json.dumps(
+                                    id_names) if id_names else None,
                                 snapshot_b64=b64,
                             )
                             db.session.add(snapshot)

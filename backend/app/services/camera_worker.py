@@ -1,6 +1,6 @@
 """Thin lifecycle wrapper around FaceRecognitionService.
 
-FaceRecognizer (from ~/face_recognizer) manages its own camera threads
+FaceRecognizer manages its own camera threads
 internally. This class simply starts and stops it through the
 FaceRecognitionService singleton bridge.
 """

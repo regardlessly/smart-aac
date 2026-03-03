@@ -2,11 +2,13 @@ from flask import Blueprint, jsonify, request
 from datetime import date, datetime
 
 from ..models.activity import Activity
+from .auth import login_required
 
 bp = Blueprint('activities', __name__)
 
 
 @bp.route('/api/activities')
+@login_required
 def list_activities():
     date_filter = request.args.get('date')
     status_filter = request.args.get('status')

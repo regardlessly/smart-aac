@@ -33,7 +33,6 @@ export interface SeniorPresence {
 export interface Room {
   id: number
   name: string
-  camera_id: number | null
   max_capacity: number
   current_occupancy: number
 }
@@ -43,6 +42,8 @@ export interface RoomHeatmap {
   name: string
   occupancy: number
   max_capacity: number
+  identified: number
+  strangers: number
   color_level: 'empty' | 'low' | 'medium' | 'high'
 }
 
@@ -101,6 +102,8 @@ export interface Camera {
   rtsp_url: string | null
   channel: number | null
   location: string
+  room_id: number | null
+  room_name: string | null
   enabled: boolean
 }
 
@@ -114,8 +117,18 @@ export interface CCTVSnapshot {
   snapshot_b64: string | null
 }
 
+export interface RosterMember {
+  name: string
+  senior_id: number | null
+  first_seen: string | null
+  last_seen: string | null
+  status: 'active' | 'inactive'
+  location: string | null
+  camera_location: string | null
+}
+
 export interface SSEEvent {
-  type: 'snapshot' | 'detection' | 'alert' | 'heartbeat'
+  type: 'snapshot' | 'detection' | 'alert' | 'heartbeat' | 'sync_progress' | 'sync_complete'
   camera_id?: number
   camera_name?: string
   person?: string
@@ -124,6 +137,21 @@ export interface SSEEvent {
   timestamp?: string
   crop?: string | null
   [key: string]: unknown
+}
+
+export interface User {
+  id: number
+  odoo_uid: string
+  name: string
+  email: string
+  is_manager: boolean
+  is_volunteer: boolean
+  last_login: string | null
+}
+
+export interface LoginResponse {
+  token: string
+  user: User
 }
 
 export interface FRStatus {
