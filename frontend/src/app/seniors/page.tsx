@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import Link from 'next/link'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import Panel from '@/components/ui/Panel'
@@ -50,21 +51,12 @@ export default function SeniorsPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Poll roster every 10s as fallback when SSE is down
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchData()
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [fetchData])
-
   // Throttle SSE-driven refresh to at most once every 10s
   const throttleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fetchRef = useRef(fetchData)
   fetchRef.current = fetchData
 
   const handleSSE = useCallback((event: SSEEvent) => {
-    // Only refresh on detection events (presence changes)
     if (event.type !== 'detection') return
     if (!throttleRef.current) {
       fetchRef.current()
@@ -76,8 +68,17 @@ export default function SeniorsPage() {
 
   const { connected } = useSSE(handleSSE)
 
-  const activeCount = roster.filter((m) => m.status === 'active').length
-  const inactiveCount = roster.filter((m) => m.status === 'inactive').length
+  // Only poll when SSE is disconnected; 30s fallback
+  useEffect(() => {
+    if (connected) return
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
+  }, [fetchData, connected])
+
+  const { activeCount, inactiveCount } = useMemo(() => ({
+    activeCount: roster.filter(m => m.status === 'active').length,
+    inactiveCount: roster.filter(m => m.status === 'inactive').length,
+  }), [roster])
 
   return (
     <div className="flex h-screen">
@@ -102,6 +103,11 @@ export default function SeniorsPage() {
           <Panel
             title="Known Members"
             subtitle={`${roster.length} member${roster.length !== 1 ? 's' : ''} registered`}
+            action={
+              <Link href="/members" className="text-xs text-teal hover:underline">
+                Manage Members
+              </Link>
+            }
           >
             {loading ? (
               <div className="text-center py-8 text-muted text-sm">Loading roster...</div>
@@ -109,7 +115,9 @@ export default function SeniorsPage() {
               <div className="text-center py-8 text-coral text-sm">{error}</div>
             ) : roster.length === 0 ? (
               <div className="text-center py-8 text-muted text-sm">
-                No known faces registered. Add members via Settings &rarr; Known Faces.
+                No members registered. Go to{' '}
+                <Link href="/members" className="text-teal hover:underline">Members</Link>{' '}
+                to sync from Odoo.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -117,10 +125,8 @@ export default function SeniorsPage() {
                   <thead>
                     <tr className="border-b border-border text-left text-muted">
                       <th className="pb-2 pr-4 font-medium">Name</th>
-                      <th className="pb-2 pr-4 font-medium">Since</th>
                       <th className="pb-2 pr-4 font-medium">Last Seen</th>
                       <th className="pb-2 pr-4 font-medium">Location</th>
-                      <th className="pb-2 pr-4 font-medium">Camera</th>
                       <th className="pb-2 font-medium">Status</th>
                     </tr>
                   </thead>
@@ -128,15 +134,29 @@ export default function SeniorsPage() {
                     {roster.map((member) => (
                       <tr
                         key={member.name}
-                        className="border-b border-border/50 last:border-0"
+                        className="border-b border-border/50 last:border-0 hover:bg-surface/50 transition-colors"
                       >
-                        <td className="py-2.5 pr-4 font-medium text-text">
-                          {member.name}
-                        </td>
-                        <td className="py-2.5 pr-4 text-muted">
-                          {member.first_seen
-                            ? formatTime(member.first_seen)
-                            : '—'}
+                        <td className="py-2.5 pr-4">
+                          {member.senior_id ? (
+                            <Link
+                              href={`/members/${member.senior_id}`}
+                              className="flex items-center gap-2 hover:text-teal transition-colors"
+                            >
+                              <span className="w-7 h-7 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                                {member.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                              </span>
+                              <span className="font-medium text-text hover:text-teal">
+                                {member.name}
+                              </span>
+                            </Link>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="w-7 h-7 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                                {member.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                              </span>
+                              <span className="font-medium text-text">{member.name}</span>
+                            </div>
+                          )}
                         </td>
                         <td className="py-2.5 pr-4 text-muted">
                           {member.last_seen ? (
@@ -150,21 +170,18 @@ export default function SeniorsPage() {
                         <td className="py-2.5 pr-4 text-muted">
                           {member.location || '—'}
                         </td>
-                        <td className="py-2.5 pr-4 text-muted">
-                          {member.camera_location || '—'}
-                        </td>
                         <td className="py-2.5">
                           <span
                             className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
                               member.status === 'active'
-                                ? 'bg-green-500/15 text-green-400'
-                                : 'bg-gray-500/15 text-gray-400'
+                                ? 'bg-green-light text-green'
+                                : 'bg-gray-100 text-gray-500'
                             }`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${
                                 member.status === 'active'
-                                  ? 'bg-green-500'
+                                  ? 'bg-green'
                                   : 'bg-gray-400'
                               }`}
                             />

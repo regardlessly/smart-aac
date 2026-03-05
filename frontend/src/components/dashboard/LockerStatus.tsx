@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import Panel from '@/components/ui/Panel'
 import { LOCKER_COLORS } from '@/lib/constants'
 import type { Locker } from '@/lib/types'
@@ -6,7 +7,7 @@ interface Props {
   lockers: Locker[]
 }
 
-export default function LockerStatus({ lockers }: Props) {
+export default memo(function LockerStatus({ lockers }: Props) {
   const available = lockers.filter(l => l.status === 'available').length
   const inUse = lockers.filter(l => l.status === 'in_use').length
 
@@ -54,4 +55,4 @@ export default function LockerStatus({ lockers }: Props) {
       </div>
     </Panel>
   )
-}
+})

@@ -4,6 +4,7 @@ export const NAV_SECTIONS = [
     items: [
       { label: 'Dashboard', href: '/', icon: 'grid' },
       { label: 'Senior Roster', href: '/seniors', icon: 'users' },
+      { label: 'Members', href: '/members', icon: 'members' },
     ],
   },
   {
@@ -27,6 +28,7 @@ export const NAV_SECTIONS = [
     title: 'Analytics',
     items: [
       { label: 'KPI Analytics', href: '/analytics', icon: 'chart' },
+      { label: 'Reports', href: '/reports', icon: 'report' },
     ],
   },
   {

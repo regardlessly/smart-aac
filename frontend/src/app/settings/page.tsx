@@ -1,17 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import Panel from '@/components/ui/Panel'
-import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
 import type { Camera, Room } from '@/lib/types'
-
-interface KnownFace {
-  name: string
-  image_count: number
-}
 
 interface CameraForm {
   name: string
@@ -31,7 +25,6 @@ const emptyRoomForm: RoomForm = { name: '', max_capacity: 20 }
 export default function SettingsPage() {
   const [cameras, setCameras] = useState<Camera[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
-  const [knownFaces, setKnownFaces] = useState<KnownFace[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,31 +45,21 @@ export default function SettingsPage() {
   const [savingRoom, setSavingRoom] = useState(false)
   const [deleteRoomConfirm, setDeleteRoomConfirm] = useState<number | null>(null)
 
-  // Member delete state
-  const [faceDeleteConfirm, setFaceDeleteConfirm] = useState<string | null>(null)
-
-  // Clear data + Sync from Odoo state
+  // Clear data state
   const [clearing, setClearing] = useState(false)
   const [clearConfirm, setClearConfirm] = useState(false)
-  const [syncing, setSyncing] = useState(false)
-  const [syncProgress, setSyncProgress] = useState<{
-    synced: number; skipped: number; total: number; name: string
-  } | null>(null)
-  const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number; errors: string[] } | null>(null)
 
   // Message state
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
-      const [cams, rms, faces] = await Promise.all([
+      const [cams, rms] = await Promise.all([
         api.camerasAdmin(),
         api.rooms(),
-        api.knownFaces(),
       ])
       setCameras(cams)
       setRooms(rms)
-      setKnownFaces(faces)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load settings')
@@ -87,38 +70,7 @@ export default function SettingsPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // SSE handler for sync progress (ref avoids stale closures)
-  const fetchDataRef = useRef(fetchData)
-  fetchDataRef.current = fetchData
-
-  const handleSSE = useCallback((event: import('@/lib/types').SSEEvent) => {
-    if (event.type === 'sync_progress') {
-      const e = event as Record<string, unknown>
-      setSyncProgress({
-        synced: (e.synced as number) || 0,
-        skipped: (e.skipped as number) || 0,
-        total: (e.total as number) || 0,
-        name: (e.name as string) || '',
-      })
-    } else if (event.type === 'sync_complete') {
-      const e = event as Record<string, unknown>
-      setSyncing(false)
-      setSyncProgress(null)
-      setSyncResult({
-        synced: (e.synced as number) || 0,
-        skipped: (e.skipped as number) || 0,
-        errors: (e.errors as string[]) || [],
-      })
-      fetchDataRef.current()
-      setMessage({
-        text: `Synced ${(e.synced as number) || 0} faces from Odoo (${(e.skipped as number) || 0} skipped)`,
-        type: 'success',
-      })
-      setTimeout(() => setMessage(null), 4000)
-    }
-  }, [])
-
-  const { connected } = useSSE(handleSSE)
+  const connected = false
 
   const showMessage = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type })
@@ -254,20 +206,7 @@ export default function SettingsPage() {
     setShowAddRoomForm(false)
   }
 
-  // ── Members (Known Faces) ───────────────────────────────
-
-  const handleDeleteFace = async (name: string) => {
-    try {
-      await api.removeKnownFace(name)
-      setFaceDeleteConfirm(null)
-      await fetchData()
-      showMessage(`Known face "${name}" removed`, 'success')
-    } catch (e) {
-      showMessage(e instanceof Error ? e.message : 'Failed to remove face', 'error')
-    }
-  }
-
-  // ── Clear Data + Sync ───────────────────────────────────
+  // ── Clear Data ──────────────────────────────────────────
 
   const handleClearData = async () => {
     setClearing(true)
@@ -280,19 +219,6 @@ export default function SettingsPage() {
       showMessage(e instanceof Error ? e.message : 'Failed to clear data', 'error')
     } finally {
       setClearing(false)
-    }
-  }
-
-  const handleSyncFromOdoo = async () => {
-    setSyncing(true)
-    setSyncResult(null)
-    setSyncProgress(null)
-    try {
-      await api.syncKnownFacesFromOdoo()
-      // Backend returns immediately; progress comes via SSE events
-    } catch (e) {
-      setSyncing(false)
-      showMessage(e instanceof Error ? e.message : 'Failed to sync from Odoo', 'error')
     }
   }
 
@@ -347,7 +273,7 @@ export default function SettingsPage() {
           <div>
             <h1 className="text-2xl font-bold text-text">Settings</h1>
             <p className="text-muted text-sm mt-0.5">
-              Configure rooms, CCTV cameras and members
+              Configure rooms and CCTV cameras
             </p>
           </div>
 
@@ -796,181 +722,45 @@ export default function SettingsPage() {
             </div>
           </Panel>
 
-          {/* ── Members ──────────────────────────────── */}
+          {/* ── Data Management ──────────────────────── */}
           <Panel
-            title="Members"
-            subtitle={`${knownFaces.length} member${knownFaces.length !== 1 ? 's' : ''} registered`}
-            action={
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleSyncFromOdoo}
-                  disabled={syncing || clearing}
-                  className="text-xs px-3 py-1.5 bg-teal text-white rounded-lg hover:bg-teal/90 font-medium disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {syncing && (
-                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  )}
-                  {syncing ? 'Syncing...' : 'Sync from Odoo'}
-                </button>
-                {!clearConfirm ? (
-                  <button
-                    onClick={() => setClearConfirm(true)}
-                    disabled={syncing || clearing}
-                    className="text-xs px-3 py-1.5 bg-coral text-white rounded-lg hover:bg-coral/90 font-medium disabled:opacity-50"
-                  >
-                    Clear All Data
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-coral font-medium">Delete all?</span>
-                    <button
-                      onClick={handleClearData}
-                      disabled={clearing}
-                      className="text-xs px-2 py-1 bg-coral text-white rounded-md hover:bg-coral/90 disabled:opacity-50"
-                    >
-                      {clearing ? 'Clearing...' : 'Yes'}
-                    </button>
-                    <button
-                      onClick={() => setClearConfirm(false)}
-                      className="text-xs px-2 py-1 text-muted hover:text-text"
-                    >
-                      No
-                    </button>
-                  </div>
-                )}
-              </div>
-            }
+            title="Data Management"
+            subtitle="Clear CCTV snapshots and face recognition data"
           >
-            {/* Sync progress bar */}
-            {syncing && syncProgress && syncProgress.total > 0 && (
-              <div className="mb-4 px-3 py-3 bg-teal/5 border border-teal/20 rounded-lg">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-teal font-medium">
-                    Syncing members... {syncProgress.synced + syncProgress.skipped}/{syncProgress.total}
+            <div className="flex items-center gap-3">
+              {!clearConfirm ? (
+                <button
+                  onClick={() => setClearConfirm(true)}
+                  disabled={clearing}
+                  className="text-xs px-3 py-1.5 bg-coral text-white rounded-lg hover:bg-coral/90 font-medium disabled:opacity-50"
+                >
+                  Clear All CCTV Data
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-coral font-medium">
+                    This will delete all snapshots and face data. Continue?
                   </span>
-                  <span className="text-muted text-xs">
-                    {syncProgress.synced} synced, {syncProgress.skipped} skipped
-                  </span>
+                  <button
+                    onClick={handleClearData}
+                    disabled={clearing}
+                    className="text-xs px-3 py-1 bg-coral text-white rounded-md hover:bg-coral/90 disabled:opacity-50"
+                  >
+                    {clearing ? 'Clearing...' : 'Yes, Clear'}
+                  </button>
+                  <button
+                    onClick={() => setClearConfirm(false)}
+                    className="text-xs px-3 py-1 text-muted hover:text-text"
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-teal h-2 rounded-full transition-all duration-300 ease-out"
-                    style={{
-                      width: `${Math.round(((syncProgress.synced + syncProgress.skipped) / syncProgress.total) * 100)}%`,
-                    }}
-                  />
-                </div>
-                {syncProgress.name && (
-                  <div className="text-xs text-muted mt-1.5 truncate">
-                    Last: {syncProgress.name}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Syncing without progress yet */}
-            {syncing && (!syncProgress || syncProgress.total === 0) && (
-              <div className="mb-4 px-3 py-3 bg-teal/5 border border-teal/20 rounded-lg flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-teal" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                <span className="text-sm text-teal font-medium">Fetching members from Odoo...</span>
-              </div>
-            )}
-
-            {/* Sync result */}
-            {!syncing && syncResult && (
-              <div className="mb-4 px-3 py-2 bg-teal/5 border border-teal/20 rounded-lg text-sm">
-                <div className="flex items-center gap-4">
-                  <span className="text-teal font-medium">{syncResult.synced} synced</span>
-                  <span className="text-muted">{syncResult.skipped} skipped</span>
-                  {syncResult.errors.length > 0 && (
-                    <span className="text-coral">{syncResult.errors.length} error{syncResult.errors.length !== 1 ? 's' : ''}</span>
-                  )}
-                  <button onClick={() => setSyncResult(null)} className="ml-auto text-xs text-muted hover:text-text">Dismiss</button>
-                </div>
-                {syncResult.errors.length > 0 && (
-                  <div className="mt-2 text-xs text-coral space-y-0.5">
-                    {syncResult.errors.slice(0, 5).map((err, i) => (
-                      <div key={i}>{err}</div>
-                    ))}
-                    {syncResult.errors.length > 5 && (
-                      <div className="text-muted">...and {syncResult.errors.length - 5} more</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Members table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-muted uppercase tracking-wide border-b border-border">
-                    <th className="pb-2 pr-4 font-semibold w-8">#</th>
-                    <th className="pb-2 pr-4 font-semibold">Name</th>
-                    <th className="pb-2 pr-4 font-semibold text-center">Images</th>
-                    <th className="pb-2 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {knownFaces.map((face, idx) => (
-                    <tr key={face.name} className="border-b border-border hover:bg-surface transition-colors">
-                      <td className="py-2.5 pr-4 text-muted text-xs">{idx + 1}</td>
-                      <td className="py-2.5 pr-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-navy-dark flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                            {face.name.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="font-medium text-text">{face.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 pr-4 text-center text-muted">
-                        {face.image_count}
-                      </td>
-                      <td className="py-2.5 text-right">
-                        {faceDeleteConfirm === face.name ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <span className="text-xs text-coral">Remove?</span>
-                            <button
-                              onClick={() => handleDeleteFace(face.name)}
-                              className="px-2 py-1 bg-coral text-white text-xs rounded-md hover:bg-coral/90"
-                            >
-                              Yes
-                            </button>
-                            <button
-                              onClick={() => setFaceDeleteConfirm(null)}
-                              className="px-2 py-1 text-muted text-xs hover:text-text"
-                            >
-                              No
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setFaceDeleteConfirm(face.name)}
-                            className="px-2 py-1 text-coral text-xs hover:underline"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-
-                  {knownFaces.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center text-muted text-sm">
-                        No members registered. Click &quot;Sync from Odoo&quot; to import members.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              )}
             </div>
+            <p className="text-xs text-muted mt-2">
+              Members can be managed from the{' '}
+              <a href="/members" className="text-teal hover:underline">Members</a> page.
+            </p>
           </Panel>
         </main>
       </div>

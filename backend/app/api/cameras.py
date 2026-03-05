@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests as http_requests
 from flask import Blueprint, current_app, g, jsonify, request
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from ..extensions import db
 from ..models.camera import Camera, CCTVSnapshot
@@ -20,7 +21,9 @@ bp = Blueprint('cameras', __name__)
 @bp.route('/api/cameras')
 @login_required
 def list_cameras():
-    cameras = Camera.query.order_by(Camera.id).all()
+    cameras = Camera.query.options(
+        joinedload(Camera.room),
+    ).order_by(Camera.id).all()
     return jsonify([c.to_dict() for c in cameras])
 
 
@@ -53,7 +56,9 @@ def latest_snapshots():
     ).all()
 
     # Include cameras without snapshots
-    all_cameras = Camera.query.order_by(Camera.id).all()
+    all_cameras = Camera.query.options(
+        joinedload(Camera.room),
+    ).order_by(Camera.id).all()
     snapshot_map = {s.camera_id: s for s in snapshots}
 
     result = []
@@ -80,7 +85,9 @@ def latest_snapshots():
 @login_required
 def list_cameras_admin():
     """List cameras with rtsp_url exposed (for settings page)."""
-    cameras = Camera.query.order_by(Camera.id).all()
+    cameras = Camera.query.options(
+        joinedload(Camera.room),
+    ).order_by(Camera.id).all()
     return jsonify([c.to_admin_dict() for c in cameras])
 
 
@@ -167,7 +174,10 @@ def recent_detections():
     from ..models.senior import SeniorPresence
 
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
-    presences = SeniorPresence.query.filter(
+    presences = SeniorPresence.query.options(
+        joinedload(SeniorPresence.senior),
+        joinedload(SeniorPresence.camera),
+    ).filter(
         SeniorPresence.last_seen_at >= cutoff
     ).order_by(SeniorPresence.last_seen_at.desc()).limit(50).all()
 

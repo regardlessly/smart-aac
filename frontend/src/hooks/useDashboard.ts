@@ -3,15 +3,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import type {
-  DashboardStats, SeniorPresence, RoomHeatmap, Activity,
+  DashboardStats, SeniorPresence, RoomHeatmap, AacActivity,
   Alert, Locker, KioskEvent, CCTVSnapshot, AlertCounts, Camera,
+  RosterMember,
 } from '@/lib/types'
 
 interface DashboardData {
   stats: DashboardStats | null
   presences: SeniorPresence[]
+  roster: RosterMember[]
   heatmap: RoomHeatmap[]
-  activities: Activity[]
+  activities: AacActivity[]
   alerts: Alert[]
   alertCounts: AlertCounts | null
   lockers: Locker[]
@@ -23,11 +25,12 @@ interface DashboardData {
   refresh: () => void
 }
 
-export function useDashboard(): DashboardData {
+export function useDashboard(sseConnected: boolean): DashboardData {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [presences, setPresences] = useState<SeniorPresence[]>([])
+  const [roster, setRoster] = useState<RosterMember[]>([])
   const [heatmap, setHeatmap] = useState<RoomHeatmap[]>([])
-  const [activities, setActivities] = useState<Activity[]>([])
+  const [activities, setActivities] = useState<AacActivity[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [alertCounts, setAlertCounts] = useState<AlertCounts | null>(null)
   const [lockers, setLockers] = useState<Locker[]>([])
@@ -39,9 +42,10 @@ export function useDashboard(): DashboardData {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [s, p, h, act, al, ac, l, k, cam, sn] = await Promise.all([
+      const [s, p, ros, h, act, al, ac, l, k, cam, sn] = await Promise.all([
         api.dashboard(),
         api.presences(),
+        api.roster(),
         api.heatmap(),
         api.activities(),
         api.alerts(),
@@ -53,8 +57,10 @@ export function useDashboard(): DashboardData {
       ])
       setStats(s)
       setPresences(p)
+      setRoster(ros)
       setHeatmap(h)
-      setActivities(act)
+      const actList = Array.isArray(act) ? act : ((act as { activities?: AacActivity[] }).activities ?? [])
+      setActivities(actList)
       setAlerts(al)
       setAlertCounts(ac)
       setLockers(l)
@@ -73,14 +79,15 @@ export function useDashboard(): DashboardData {
     fetchAll()
   }, [fetchAll])
 
-  // Poll every 10s as fallback when SSE is down
+  // Only poll when SSE is disconnected; 30s fallback interval
   useEffect(() => {
-    const interval = setInterval(fetchAll, 10000)
+    if (sseConnected) return
+    const interval = setInterval(fetchAll, 30000)
     return () => clearInterval(interval)
-  }, [fetchAll])
+  }, [fetchAll, sseConnected])
 
   return {
-    stats, presences, heatmap, activities, alerts, alertCounts,
+    stats, presences, roster, heatmap, activities, alerts, alertCounts,
     lockers, kioskEvents, cameras, snapshots, loading, error, refresh: fetchAll,
   }
 }

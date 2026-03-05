@@ -10,9 +10,9 @@ class Activity(db.Model):
     name = db.Column(db.String(100), nullable=False)
     room_id = db.Column(
         db.Integer, db.ForeignKey('rooms.id'), nullable=True)
-    scheduled_time = db.Column(db.DateTime, nullable=False)
+    scheduled_time = db.Column(db.DateTime, nullable=False, index=True)
     end_time = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(20), default='upcoming')
+    status = db.Column(db.String(20), default='upcoming', index=True)
     attendee_count = db.Column(db.Integer, default=0)
 
     def to_dict(self):

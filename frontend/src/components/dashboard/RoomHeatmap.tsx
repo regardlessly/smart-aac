@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import Panel from '@/components/ui/Panel'
 import { HEATMAP_COLORS } from '@/lib/constants'
 import type { RoomHeatmap as RoomHeatmapType } from '@/lib/types'
@@ -6,7 +7,7 @@ interface Props {
   rooms: RoomHeatmapType[]
 }
 
-export default function RoomHeatmap({ rooms }: Props) {
+export default memo(function RoomHeatmap({ rooms }: Props) {
   return (
     <Panel
       title="Room Occupancy Heatmap"
@@ -66,4 +67,4 @@ export default function RoomHeatmap({ rooms }: Props) {
       </div>
     </Panel>
   )
-}
+})

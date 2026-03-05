@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import { HEATMAP_COLORS } from '@/lib/constants'
@@ -33,18 +33,26 @@ export default function HeatmapPage() {
     fetchHeatmap()
   }, [fetchHeatmap])
 
-  // Poll at interval matching backend snapshot cycle
+  // SSE real-time updates — only refetch on detection/snapshot events
+  const handleSSE = useCallback((event: { type: string }) => {
+    if (event.type === 'detection' || event.type === 'snapshot') {
+      fetchHeatmap()
+    }
+  }, [fetchHeatmap])
+  const { connected } = useSSE(handleSSE)
+
+  // Only poll when SSE is disconnected
   useEffect(() => {
+    if (connected) return
     const interval = setInterval(fetchHeatmap, POLL_INTERVAL)
     return () => clearInterval(interval)
-  }, [fetchHeatmap])
+  }, [fetchHeatmap, connected])
 
-  // SSE real-time updates
-  const { connected } = useSSE(fetchHeatmap)
-
-  const totalOccupancy = rooms.reduce((s, r) => s + r.occupancy, 0)
-  const totalCapacity = rooms.reduce((s, r) => s + r.max_capacity, 0)
-  const activeRooms = rooms.filter(r => r.occupancy > 0).length
+  const { totalOccupancy, totalCapacity, activeRooms } = useMemo(() => ({
+    totalOccupancy: rooms.reduce((s, r) => s + r.occupancy, 0),
+    totalCapacity: rooms.reduce((s, r) => s + r.max_capacity, 0),
+    activeRooms: rooms.filter(r => r.occupancy > 0).length,
+  }), [rooms])
 
   return (
     <div className="flex h-screen">

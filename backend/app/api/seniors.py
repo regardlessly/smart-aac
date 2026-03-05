@@ -3,10 +3,12 @@ from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from ..extensions import db
 from ..lib.face_recognizer import get_person_name
 from ..models.senior import Senior, SeniorPresence
+from ..models.camera import Camera
 from .auth import login_required
 
 bp = Blueprint('seniors', __name__)
@@ -36,7 +38,10 @@ def list_presence():
     if status_filter:
         query = query.filter_by(status=status_filter)
 
-    presences = query.order_by(SeniorPresence.arrived_at.desc()).all()
+    presences = query.options(
+        joinedload(SeniorPresence.senior),
+        joinedload(SeniorPresence.room),
+    ).order_by(SeniorPresence.arrived_at.desc()).all()
     return jsonify([p.to_dict() for p in presences])
 
 
@@ -107,7 +112,10 @@ def roster():
                 SeniorPresence.status == 'identified',
             ).group_by(SeniorPresence.senior_id).subquery()
 
-            latest_presences = db.session.query(SeniorPresence).join(
+            latest_presences = db.session.query(SeniorPresence).options(
+                joinedload(SeniorPresence.room),
+                joinedload(SeniorPresence.camera).joinedload(Camera.room),
+            ).join(
                 latest_sub, SeniorPresence.id == latest_sub.c.max_id
             ).all()
 

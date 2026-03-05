@@ -21,6 +21,8 @@ const ICONS: Record<string, string> = {
   tablet: '📱',
   door: '🚪',
   chart: '📊',
+  report: '📋',
+  members: '🧑‍🤝‍🧑',
   settings: '⚙️',
 }
 

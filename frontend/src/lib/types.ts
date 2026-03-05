@@ -58,6 +58,50 @@ export interface Activity {
   attendee_count: number
 }
 
+// Odoo aac_activities response
+export interface AacActivitySlot {
+  slot_id?: number
+  date?: string
+  day?: string
+  time?: string
+  name?: string
+  venue?: string | false
+  seats_available?: number
+  vacancies?: number
+  total_register?: number
+  total_confirm?: number
+  total_attended?: number
+  registered?: boolean
+  make_attendance?: boolean
+}
+
+export interface AacActivity {
+  id?: number
+  name?: string
+  desc?: string | false
+  description?: string
+  date_begin?: string
+  date_end?: string
+  from_time?: string
+  to_time?: string
+  status?: string
+  state?: string
+  fee?: number
+  regular_event?: boolean
+  slot_ids?: AacActivitySlot[]
+  venue_ids?: Array<{ id: number; name: string | false }>
+  event_type?: Array<{ id: number; name: string }>
+  event_domain?: Array<{ id: number; name: string }>
+  spoken_language?: Array<{ id: number; name: string }>
+  tag?: Array<{ id: number; name: string }>
+  e_image_url?: string
+  note?: string | false
+  zoom_link?: string | false
+  [key: string]: unknown
+}
+
+export type AacActivitiesResponse = AacActivity[] | { activities: AacActivity[]; [key: string]: unknown }
+
 export interface Alert {
   id: number
   type: 'critical' | 'warning' | 'info'
@@ -152,6 +196,152 @@ export interface User {
 export interface LoginResponse {
   token: string
   user: User
+}
+
+// ── Report Types ──
+
+export interface RoomOccupancyRoom {
+  id: number
+  name: string
+}
+
+export interface RoomOccupancyPoint {
+  date: string
+  [key: string]: string | number
+}
+
+export interface RoomOccupancySummary {
+  peak_day: string
+  peak_count: number
+  busiest_room: string
+  avg_per_day: number
+}
+
+export interface RoomOccupancyData {
+  rooms: RoomOccupancyRoom[]
+  series: RoomOccupancyPoint[]
+  summary: RoomOccupancySummary
+}
+
+export interface MemberSummary {
+  senior_id: number
+  senior_name: string
+  registered_at: string | null
+  total_visits: number
+  avg_duration: string
+  last_seen_room: string | null
+  last_seen_at: string | null
+}
+
+export interface WeekEntry {
+  week: number
+  label: string
+  start: string
+  end: string
+  days_visited: number
+  rooms: string[]
+}
+
+export interface MemberWeeklyData {
+  senior: { id: number; name: string }
+  month: string
+  weeks: WeekEntry[]
+  total_days: number
+}
+
+export interface DurationEntry {
+  room_id: number
+  room_name: string
+  duration_seconds: number
+  duration_formatted: string
+  session_count: number
+  first_arrival: string | null
+}
+
+export interface MemberDurationData {
+  senior: { id: number; name: string }
+  date: string
+  entries: DurationEntry[]
+  total_duration: string
+  total_sessions: number
+}
+
+// ── Member Calendar ──
+
+export interface CalendarDay {
+  date: string
+  total_seconds: number
+}
+
+export interface CalendarSummary {
+  days_present: number
+  total_hours: string
+  max_day: { date: string; hours: string } | null
+}
+
+export interface MemberCalendarData {
+  senior: { id: number; name: string }
+  month: string
+  days: CalendarDay[]
+  summary: CalendarSummary
+}
+
+// ── Favourite Rooms ──
+
+export interface FavouriteRoom {
+  room_id: number | null
+  room_name: string
+  total_seconds: number
+  duration_formatted: string
+  days_count: number
+  percentage: number
+}
+
+export interface MemberFavouriteRoomsData {
+  senior: { id: number; name: string }
+  month: string
+  rooms: FavouriteRoom[]
+  total_duration: string
+}
+
+// ── Attendance Trend ──
+
+export interface TrendWeek {
+  iso_week: string
+  week_label: string
+  start_date: string
+  total_seconds: number
+  hours: number
+  days_present: number
+}
+
+export interface TrendSummary {
+  avg_weekly_hours: number
+  trend: 'increasing' | 'stable' | 'declining'
+  total_weeks: number
+}
+
+export interface MemberAttendanceTrendData {
+  senior: { id: number; name: string }
+  months: number
+  weeks: TrendWeek[]
+  summary: TrendSummary
+}
+
+// ── Peer Presence ──
+
+export interface PeerEntry {
+  senior_id: number
+  senior_name: string
+  co_occurrence_count: number
+  common_rooms: string[]
+}
+
+export interface MemberPeersData {
+  senior: { id: number; name: string }
+  month: string
+  peers: PeerEntry[]
+  total_peers: number
 }
 
 export interface FRStatus {

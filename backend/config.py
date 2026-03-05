@@ -38,6 +38,14 @@ class Config:
     FR_ANALYSE_EVERY = int(
         os.environ.get('FR_ANALYSE_EVERY', '5'))
 
+    # CCTV operating hours (24h format)
+    CCTV_START_HOUR = int(os.environ.get('CCTV_START_HOUR', '7'))   # 7 AM
+    CCTV_END_HOUR = int(os.environ.get('CCTV_END_HOUR', '22'))     # 10 PM
+
+    # Daily report generation hour (runs at this hour to summarize the day)
+    DAILY_REPORT_HOUR = int(os.environ.get('DAILY_REPORT_HOUR', '11'))  # 11 AM
+    DAILY_REPORT_MINUTE = int(os.environ.get('DAILY_REPORT_MINUTE', '45'))  # :45
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

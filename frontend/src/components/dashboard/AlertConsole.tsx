@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import Panel from '@/components/ui/Panel'
 import Badge from '@/components/ui/Badge'
 import { ALERT_COLORS } from '@/lib/constants'
@@ -17,7 +18,7 @@ function timeAgo(iso: string) {
   return `${hours}h ago`
 }
 
-export default function AlertConsole({ alerts, onAcknowledge }: Props) {
+export default memo(function AlertConsole({ alerts, onAcknowledge }: Props) {
   const active = alerts.filter(a => !a.acknowledged)
 
   return (
@@ -75,4 +76,4 @@ export default function AlertConsole({ alerts, onAcknowledge }: Props) {
       </div>
     </Panel>
   )
-}
+})

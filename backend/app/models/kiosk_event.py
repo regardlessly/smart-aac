@@ -15,7 +15,8 @@ class KioskEvent(db.Model):
     locker_id = db.Column(
         db.Integer, db.ForeignKey('lockers.id'), nullable=True)
     timestamp = db.Column(
-        db.DateTime, default=lambda: datetime.now(timezone.utc))
+        db.DateTime, default=lambda: datetime.now(timezone.utc),
+        index=True)
 
     activity = db.relationship('Activity')
     locker = db.relationship('Locker')

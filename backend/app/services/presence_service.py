@@ -42,14 +42,29 @@ class PresenceService:
                         senior_id=senior.id,
                         is_current=True,
                     ).first()
+                    new_room_id = room.id if room else None
                     if existing:
-                        existing.last_seen_at = now
-                        if room:
-                            existing.room_id = room.id
+                        if new_room_id and existing.room_id != new_room_id:
+                            # Room changed — close old presence, start new one
+                            existing.last_seen_at = now
+                            existing.is_current = False
+                            presence = SeniorPresence(
+                                senior_id=senior.id,
+                                room_id=new_room_id,
+                                camera_id=camera.id,
+                                arrived_at=now,
+                                last_seen_at=now,
+                                status='identified',
+                                is_current=True,
+                            )
+                            session.add(presence)
+                        else:
+                            # Same room — just update last_seen
+                            existing.last_seen_at = now
                     else:
                         presence = SeniorPresence(
                             senior_id=senior.id,
-                            room_id=room.id if room else None,
+                            room_id=new_room_id,
                             camera_id=camera.id,
                             arrived_at=now,
                             last_seen_at=now,

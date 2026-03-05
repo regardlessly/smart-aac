@@ -5,6 +5,9 @@ from ..extensions import db
 
 class Alert(db.Model):
     __tablename__ = 'alerts'
+    __table_args__ = (
+        db.Index('ix_alert_ack_type', 'acknowledged', 'type'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(20), nullable=False)
@@ -13,7 +16,8 @@ class Alert(db.Model):
     camera_id = db.Column(
         db.Integer, db.ForeignKey('cameras.id'), nullable=True)
     created_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(timezone.utc))
+        db.DateTime, default=lambda: datetime.now(timezone.utc),
+        index=True)
     acknowledged = db.Column(db.Boolean, default=False)
 
     camera = db.relationship('Camera', backref='alerts')

@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from datetime import date, datetime
+from sqlalchemy.orm import joinedload
 
 from ..models.kiosk_event import KioskEvent
 from .auth import login_required
@@ -30,6 +31,10 @@ def list_kiosk_events():
         except ValueError:
             pass
 
-    events = query.order_by(
+    events = query.options(
+        joinedload(KioskEvent.senior),
+        joinedload(KioskEvent.activity),
+        joinedload(KioskEvent.locker),
+    ).order_by(
         KioskEvent.timestamp.desc()).limit(limit).all()
     return jsonify([e.to_dict() for e in events])

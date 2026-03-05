@@ -9,6 +9,8 @@ def register_blueprints(app):
     from .kiosk_events import bp as kiosk_events_bp
     from .cameras import bp as cameras_bp
     from .sse import bp as sse_bp
+    from .reports import bp as reports_bp
+    from .summary import bp as summary_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -20,3 +22,5 @@ def register_blueprints(app):
     app.register_blueprint(kiosk_events_bp)
     app.register_blueprint(cameras_bp)
     app.register_blueprint(sse_bp)
+    app.register_blueprint(reports_bp)
+    app.register_blueprint(summary_bp)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import Panel from '@/components/ui/Panel'
@@ -102,27 +102,7 @@ export default function CCTVPage() {
 
   useEffect(() => { fetchData(); fetchDetections() }, [fetchData, fetchDetections])
 
-  // Poll cameras + status + snapshots + detections every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const [cams, st, snaps] = await Promise.all([
-          api.cameras(),
-          api.cctvStatus(),
-          api.latestSnapshots(),
-        ])
-        setCameras(cams)
-        setStatus(st)
-        setSnapshots(snaps)
-        setError(null)
-        setLastUpdated(new Date())
-      } catch {
-        // silent — initial data still shown
-      }
-      fetchDetections()
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [fetchDetections])
+  // Polling is set up after SSE hook below (needs `connected` state)
 
   // Throttle snapshot refresh — at most once every 5s
   const snapThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -153,8 +133,34 @@ export default function CCTVPage() {
 
   const { connected } = useSSE(handleSSE)
 
+  // Only poll when SSE is disconnected; 30s fallback
+  useEffect(() => {
+    if (connected) return
+    const interval = setInterval(async () => {
+      try {
+        const [cams, st, snaps] = await Promise.all([
+          api.cameras(),
+          api.cctvStatus(),
+          api.latestSnapshots(),
+        ])
+        setCameras(cams)
+        setStatus(st)
+        setSnapshots(snaps)
+        setError(null)
+        setLastUpdated(new Date())
+      } catch {
+        // silent
+      }
+      fetchDetections()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [fetchDetections, connected])
+
   const isRunning = status?.status === 'running'
-  const snapshotMap = new Map(snapshots.map(s => [s.camera_id, s]))
+  const snapshotMap = useMemo(
+    () => new Map(snapshots.map(s => [s.camera_id, s])),
+    [snapshots]
+  )
 
   if (loading) {
     return (
@@ -237,6 +243,9 @@ export default function CCTVPage() {
                         src={`data:image/jpeg;base64,${snap.snapshot_b64}`}
                         alt={cam.name}
                         className="w-full h-full object-cover"
+                        width={640}
+                        height={360}
+                        loading="lazy"
                       />
                     ) : (
                       <div className="text-center">

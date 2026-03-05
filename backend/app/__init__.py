@@ -47,4 +47,12 @@ def create_app(config_name=None):
             except Exception as e:
                 app.logger.warning(f'Camera worker failed to start: {e}')
 
+    # Start daily summary scheduler
+    if config_name != 'testing':
+        try:
+            from .scheduler import init_scheduler
+            init_scheduler(app)
+        except Exception as e:
+            app.logger.warning(f'Scheduler failed to start: {e}')
+
     return app

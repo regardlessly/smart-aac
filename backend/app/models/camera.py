@@ -42,7 +42,8 @@ class CCTVSnapshot(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     camera_id = db.Column(
-        db.Integer, db.ForeignKey('cameras.id'), nullable=False)
+        db.Integer, db.ForeignKey('cameras.id'), nullable=False,
+        index=True)
     timestamp = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc))
     identified_count = db.Column(db.Integer, default=0)

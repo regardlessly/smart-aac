@@ -351,8 +351,8 @@ class FaceRecognitionService:
                 logger.error('Snapshot loop error:\n'
                              + traceback.format_exc())
 
-            # Wait 30s between snapshot cycles, checking stop every 1s
-            for _ in range(30):
+            # Wait 3s between snapshot cycles, checking stop every 1s
+            for _ in range(3):
                 if not cls._running:
                     break
                 time.sleep(1)

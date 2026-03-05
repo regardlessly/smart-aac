@@ -1,7 +1,6 @@
-from flask import Blueprint, jsonify, request
-from datetime import date, datetime
+from flask import Blueprint, current_app, g, jsonify, request
+import requests as http_requests
 
-from ..models.activity import Activity
 from .auth import login_required
 
 bp = Blueprint('activities', __name__)
@@ -10,32 +9,38 @@ bp = Blueprint('activities', __name__)
 @bp.route('/api/activities')
 @login_required
 def list_activities():
-    date_filter = request.args.get('date')
-    status_filter = request.args.get('status')
+    """Proxy to Odoo aac_activities endpoint."""
+    period = request.args.get('period', 'today')
 
-    query = Activity.query
+    user = g.current_user
+    access_token = user.odoo_access_token
+    if not access_token:
+        return jsonify({'error': 'No Odoo access token. Please re-login.'}), 401
 
-    if date_filter == 'today' or date_filter is None:
-        today_start = datetime.combine(date.today(), datetime.min.time())
-        today_end = datetime.combine(date.today(), datetime.max.time())
-        query = query.filter(
-            Activity.scheduled_time >= today_start,
-            Activity.scheduled_time <= today_end,
+    odoo_base = current_app.config['ODOO_BASE_URL'].rstrip('/')
+    centre_id = current_app.config['ODOO_CENTRE_ID']
+
+    try:
+        resp = http_requests.get(
+            f'{odoo_base}/centre_ops/aac_activities',
+            params={
+                'period': period,
+                'centre_id': centre_id,
+            },
+            headers={'access-token': access_token},
+            timeout=15,
         )
-    elif date_filter:
-        try:
-            d = date.fromisoformat(date_filter)
-            day_start = datetime.combine(d, datetime.min.time())
-            day_end = datetime.combine(d, datetime.max.time())
-            query = query.filter(
-                Activity.scheduled_time >= day_start,
-                Activity.scheduled_time <= day_end,
-            )
-        except ValueError:
-            pass
+    except http_requests.RequestException as e:
+        current_app.logger.error(f'Odoo aac_activities request failed: {e}')
+        return jsonify({'error': 'Activity service unavailable'}), 503
 
-    if status_filter:
-        query = query.filter_by(status=status_filter)
+    if resp.status_code != 200:
+        current_app.logger.error(
+            f'Odoo aac_activities returned {resp.status_code}: {resp.text[:1000]}')
+        return jsonify({'error': f'Odoo API error ({resp.status_code})'}), 502
 
-    activities = query.order_by(Activity.scheduled_time).all()
-    return jsonify([a.to_dict() for a in activities])
+    data = resp.json()
+    # Odoo wraps in {"result": ...}
+    result = data.get('result', data)
+
+    return jsonify(result)

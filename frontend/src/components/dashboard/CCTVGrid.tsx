@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import Panel from '@/components/ui/Panel'
 import type { Camera, CCTVSnapshot } from '@/lib/types'
 
@@ -6,8 +7,11 @@ interface Props {
   snapshots: CCTVSnapshot[]
 }
 
-export default function CCTVGrid({ cameras, snapshots }: Props) {
-  const snapshotMap = new Map(snapshots.map(s => [s.camera_id, s]))
+export default memo(function CCTVGrid({ cameras, snapshots }: Props) {
+  const snapshotMap = useMemo(
+    () => new Map(snapshots.map(s => [s.camera_id, s])),
+    [snapshots]
+  )
 
   return (
     <Panel
@@ -31,6 +35,9 @@ export default function CCTVGrid({ cameras, snapshots }: Props) {
                     src={`data:image/jpeg;base64,${snap.snapshot_b64}`}
                     alt={cam.name}
                     className="w-full h-full object-cover"
+                    width={640}
+                    height={360}
+                    loading="lazy"
                   />
                 ) : (
                   <div className="text-gray-600 text-sm">
@@ -68,4 +75,4 @@ export default function CCTVGrid({ cameras, snapshots }: Props) {
       </div>
     </Panel>
   )
-}
+})

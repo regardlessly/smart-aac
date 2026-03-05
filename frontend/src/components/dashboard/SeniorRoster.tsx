@@ -1,25 +1,45 @@
+import { memo, useMemo } from 'react'
+import Link from 'next/link'
 import Panel from '@/components/ui/Panel'
-import Badge from '@/components/ui/Badge'
-import type { SeniorPresence } from '@/lib/types'
+import type { RosterMember } from '@/lib/types'
 
 interface Props {
-  presences: SeniorPresence[]
+  roster: RosterMember[]
 }
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-SG', {
-    hour: '2-digit', minute: '2-digit',
+function timeAgo(iso: string | null): string {
+  if (!iso) return '—'
+  const diff = Date.now() - new Date(iso).getTime()
+  if (diff < 0) return 'just now'
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ${mins % 60}m ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+function formatTime(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
-export default function SeniorRoster({ presences }: Props) {
-  const identified = presences.filter(p => p.status === 'identified')
-  const unidentified = presences.filter(p => p.status === 'unidentified')
+export default memo(function SeniorRoster({ roster }: Props) {
+  const { activeCount, inactiveCount } = useMemo(() => ({
+    activeCount: roster.filter(m => m.status === 'active').length,
+    inactiveCount: roster.filter(m => m.status === 'inactive').length,
+  }), [roster])
 
   return (
     <Panel
       title="Senior Roster"
-      subtitle={`${identified.length} identified, ${unidentified.length} unidentified`}
+      subtitle={`${activeCount} active, ${inactiveCount} inactive`}
       action={
         <a href="/seniors" className="text-xs text-teal hover:underline">
           View All
@@ -31,48 +51,68 @@ export default function SeniorRoster({ presences }: Props) {
           <thead className="bg-surface sticky top-0">
             <tr className="text-left text-xs text-muted uppercase tracking-wide">
               <th className="px-4 py-2 font-medium">Name</th>
-              <th className="px-4 py-2 font-medium">NRIC</th>
-              <th className="px-4 py-2 font-medium">Room</th>
-              <th className="px-4 py-2 font-medium">Since</th>
+              <th className="px-4 py-2 font-medium">Last Seen</th>
+              <th className="px-4 py-2 font-medium">Location</th>
               <th className="px-4 py-2 font-medium">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {identified.map((p) => (
-              <tr key={p.id} className="hover:bg-surface/50">
+            {roster.map((member) => (
+              <tr
+                key={member.name}
+                className="hover:bg-surface/50 transition-colors"
+              >
                 <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-teal/10 rounded-full flex items-center justify-center text-teal text-xs font-medium">
-                      {p.senior_name?.charAt(0) || '?'}
+                  {member.senior_id ? (
+                    <Link
+                      href={`/members/${member.senior_id}`}
+                      className="flex items-center gap-2 hover:text-teal transition-colors"
+                    >
+                      <span className="w-7 h-7 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                        {member.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                      </span>
+                      <span className="font-medium text-text hover:text-teal">
+                        {member.name}
+                      </span>
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                        {member.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                      </span>
+                      <span className="font-medium text-text">{member.name}</span>
                     </div>
-                    <span className="font-medium text-text">{p.senior_name}</span>
-                  </div>
+                  )}
                 </td>
-                <td className="px-4 py-2.5 text-muted font-mono text-xs">
-                  ****{presences.find(pr => pr.id === p.id)?.senior_id ? 'A' : ''}
+                <td className="px-4 py-2.5 text-muted">
+                  {member.last_seen ? (
+                    <span title={formatTime(member.last_seen)}>
+                      {timeAgo(member.last_seen)}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
                 </td>
-                <td className="px-4 py-2.5 text-text-secondary">{p.room_name || '—'}</td>
-                <td className="px-4 py-2.5 text-text-secondary">{formatTime(p.arrived_at)}</td>
+                <td className="px-4 py-2.5 text-muted">
+                  {member.location || '—'}
+                </td>
                 <td className="px-4 py-2.5">
-                  <Badge bg="bg-green-light" text="text-green">Present</Badge>
-                </td>
-              </tr>
-            ))}
-            {unidentified.map((p) => (
-              <tr key={p.id} className="hover:bg-surface/50 bg-coral-light/20">
-                <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-coral/10 rounded-full flex items-center justify-center text-coral text-xs font-medium">
-                      ?
-                    </div>
-                    <span className="font-medium text-coral">Unidentified</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-muted">—</td>
-                <td className="px-4 py-2.5 text-text-secondary">{p.room_name || '—'}</td>
-                <td className="px-4 py-2.5 text-text-secondary">{formatTime(p.arrived_at)}</td>
-                <td className="px-4 py-2.5">
-                  <Badge bg="bg-coral-light" text="text-coral">Unknown</Badge>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      member.status === 'active'
+                        ? 'bg-green-light text-green'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        member.status === 'active'
+                          ? 'bg-green'
+                          : 'bg-gray-400'
+                      }`}
+                    />
+                    {member.status === 'active' ? 'Active' : 'Inactive'}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -81,4 +121,4 @@ export default function SeniorRoster({ presences }: Props) {
       </div>
     </Panel>
   )
-}
+})

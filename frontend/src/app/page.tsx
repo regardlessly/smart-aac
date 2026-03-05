@@ -16,19 +16,19 @@ import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
 
 export default function DashboardPage() {
-  const data = useDashboard()
-  // Throttle SSE-driven refresh to at most once every 10s
+  // SSE must be established first so useDashboard knows connection status
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const refreshRef = useRef(data.refresh)
-  refreshRef.current = data.refresh
-  const { connected } = useSSE(() => {
+  const refreshRef = useRef<() => void>(() => {})
+  const { connected } = useSSE(useCallback(() => {
     if (!refreshTimerRef.current) {
       refreshRef.current()
       refreshTimerRef.current = setTimeout(() => {
         refreshTimerRef.current = null
       }, 10000)
     }
-  })
+  }, []))
+  const data = useDashboard(connected)
+  refreshRef.current = data.refresh
 
   const handleAcknowledge = useCallback(async (id: number) => {
     await api.acknowledgeAlert(id)
@@ -119,7 +119,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-12 gap-6">
             {/* Left Column - Senior Roster (wide) */}
             <div className="col-span-8">
-              <SeniorRoster presences={data.presences} />
+              <SeniorRoster roster={data.roster} />
             </div>
 
             {/* Right Column - Heatmap + Alerts */}

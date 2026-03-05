@@ -5,7 +5,7 @@ import { getUser, logout } from '@/lib/auth'
 import type { User } from '@/lib/types'
 
 interface TopBarProps {
-  connected: boolean
+  connected?: boolean
   alertCount?: number
 }
 
@@ -31,14 +31,16 @@ export default function TopBar({ connected, alertCount = 0 }: TopBarProps) {
       {/* Left: Title + live indicator */}
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold text-text">Smart AAC Dashboard</h1>
-        <div className="flex items-center gap-1.5">
-          <div className={`w-2 h-2 rounded-full ${
-            connected ? 'bg-green animate-pulse-dot' : 'bg-gray-300'
-          }`} />
-          <span className="text-xs text-muted">
-            {connected ? 'Live' : 'Offline'}
-          </span>
-        </div>
+        {connected !== undefined && (
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${
+              connected ? 'bg-green animate-pulse-dot' : 'bg-gray-300'
+            }`} />
+            <span className="text-xs text-muted">
+              {connected ? 'Live' : 'Offline'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Right: Date, alerts, user, logout */}

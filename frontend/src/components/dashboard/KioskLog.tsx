@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import Panel from '@/components/ui/Panel'
 import type { KioskEvent } from '@/lib/types'
 
@@ -23,7 +24,7 @@ function formatTime(iso: string) {
   })
 }
 
-export default function KioskLog({ events }: Props) {
+export default memo(function KioskLog({ events }: Props) {
   return (
     <Panel
       title="Kiosk Activity Log"
@@ -55,4 +56,4 @@ export default function KioskLog({ events }: Props) {
       </div>
     </Panel>
   )
-}
+})

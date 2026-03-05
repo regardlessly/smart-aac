@@ -1,4 +1,6 @@
 from flask import Blueprint, jsonify, request
+from sqlalchemy import case, func
+from sqlalchemy.orm import joinedload
 
 from ..extensions import db
 from ..models.alert import Alert
@@ -12,8 +14,9 @@ bp = Blueprint('alerts', __name__)
 def list_alerts():
     acknowledged = request.args.get('acknowledged')
     alert_type = request.args.get('type')
+    limit = request.args.get('limit', 200, type=int)
 
-    query = Alert.query
+    query = Alert.query.options(joinedload(Alert.camera))
 
     if acknowledged is not None:
         query = query.filter_by(
@@ -22,26 +25,28 @@ def list_alerts():
     if alert_type:
         query = query.filter_by(type=alert_type)
 
-    alerts = query.order_by(Alert.created_at.desc()).all()
+    alerts = query.order_by(Alert.created_at.desc()).limit(limit).all()
     return jsonify([a.to_dict() for a in alerts])
 
 
 @bp.route('/api/alerts/count')
 @login_required
 def alert_count():
-    total = Alert.query.filter_by(acknowledged=False).count()
-    critical = Alert.query.filter_by(
-        acknowledged=False, type='critical').count()
-    warning = Alert.query.filter_by(
-        acknowledged=False, type='warning').count()
-    info = Alert.query.filter_by(
-        acknowledged=False, type='info').count()
+    row = db.session.query(
+        func.count().label('total'),
+        func.sum(case((Alert.type == 'critical', 1), else_=0)).label(
+            'critical'),
+        func.sum(case((Alert.type == 'warning', 1), else_=0)).label(
+            'warning'),
+        func.sum(case((Alert.type == 'info', 1), else_=0)).label(
+            'info'),
+    ).filter(Alert.acknowledged == False).one()  # noqa: E712
 
     return jsonify({
-        'total': total,
-        'critical': critical,
-        'warning': warning,
-        'info': info,
+        'total': row.total or 0,
+        'critical': int(row.critical or 0),
+        'warning': int(row.warning or 0),
+        'info': int(row.info or 0),
     })
 
 
