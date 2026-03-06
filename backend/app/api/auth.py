@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from functools import wraps
+from typing import Optional
 
 import jwt
 import requests as http_requests
@@ -31,7 +32,7 @@ def _create_token(user: User) -> str:
     )
 
 
-def _decode_token(token: str) -> dict | None:
+def _decode_token(token: str) -> Optional[dict]:
     try:
         return jwt.decode(
             token,
