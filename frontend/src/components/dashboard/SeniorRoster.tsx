@@ -41,9 +41,9 @@ export default memo(function SeniorRoster({ roster }: Props) {
       title="Senior Roster"
       subtitle={`${activeCount} active, ${inactiveCount} inactive`}
       action={
-        <a href="/seniors" className="text-xs text-teal hover:underline">
+        <Link href="/members" className="text-xs text-teal hover:underline">
           View All
-        </a>
+        </Link>
       }
     >
       <div className="overflow-y-auto max-h-[300px] -mx-4 -mb-4">
@@ -101,7 +101,7 @@ export default memo(function SeniorRoster({ roster }: Props) {
                     className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
                       member.status === 'active'
                         ? 'bg-green-light text-green'
-                        : 'bg-gray-100 text-gray-500'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                     }`}
                   >
                     <span

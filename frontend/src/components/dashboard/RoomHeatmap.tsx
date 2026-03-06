@@ -40,7 +40,7 @@ export default memo(function RoomHeatmap({ rooms }: Props) {
                 </div>
               )}
               {/* Mini progress bar */}
-              <div className="mt-1.5 h-1.5 bg-white/60 rounded-full overflow-hidden">
+              <div className="mt-1.5 h-1.5 bg-white/60 dark:bg-white/10 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${
                     room.color_level === 'high' ? 'bg-coral' :

@@ -110,6 +110,7 @@ class FaceRecognitionService:
                     det_size=(640, 640),
                     output_dir=os.path.join(data_dir, 'output'),
                     auto_learn=True,
+                    save_captures=False,
                 )
                 cls._instance.start()
                 cls._running = True

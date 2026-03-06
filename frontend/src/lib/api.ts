@@ -115,12 +115,12 @@ export const api = {
     apiFetch<{ status: string; id: number }>(`/api/cameras/${id}`, {
       method: 'DELETE',
     }),
-  createRoom: (data: { name: string; max_capacity?: number }) =>
+  createRoom: (data: { name: string; max_capacity?: number; moderate_threshold?: number | null }) =>
     apiFetch<import('./types').Room>('/api/rooms', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateRoom: (id: number, data: Partial<{ name: string; max_capacity: number }>) =>
+  updateRoom: (id: number, data: Partial<{ name: string; max_capacity: number; moderate_threshold: number | null }>) =>
     apiFetch<import('./types').Room>(`/api/rooms/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

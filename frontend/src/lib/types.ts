@@ -34,6 +34,7 @@ export interface Room {
   id: number
   name: string
   max_capacity: number
+  moderate_threshold: number | null
   current_occupancy: number
 }
 
@@ -42,6 +43,7 @@ export interface RoomHeatmap {
   name: string
   occupancy: number
   max_capacity: number
+  moderate_threshold: number | null
   identified: number
   strangers: number
   color_level: 'empty' | 'low' | 'medium' | 'high'

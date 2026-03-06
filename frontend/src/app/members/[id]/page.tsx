@@ -633,8 +633,8 @@ export default function MemberDetailPage() {
 
             {loading ? (
               <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-48 mb-2" />
-                <div className="h-4 bg-gray-100 rounded w-32" />
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-2" />
+                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded w-32" />
               </div>
             ) : summary ? (
               <div className="flex items-center gap-3">
@@ -795,7 +795,7 @@ function WeeklyTab({
                       <td className="py-2.5 pr-4 text-muted">{w.start} – {w.end}</td>
                       <td className="py-2.5 pr-4 text-center">
                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${
-                          w.days_visited > 0 ? 'bg-teal/10 text-teal' : 'bg-gray-100 text-gray-400'
+                          w.days_visited > 0 ? 'bg-teal/10 text-teal' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
                         }`}>
                           {w.days_visited}
                         </span>
@@ -911,7 +911,7 @@ function DurationTab({
                   return (
                     <div key={e.room_id} className="flex items-center gap-3">
                       <span className="text-xs text-muted w-28 truncate">{e.room_name}</span>
-                      <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div className="h-full bg-teal rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-xs font-medium text-text w-16 text-right">{e.duration_formatted}</span>
@@ -965,7 +965,7 @@ function CalendarTab({
   }, [data])
 
   const getIntensityClass = (seconds: number, maxSecs: number) => {
-    if (seconds === 0) return 'bg-gray-100'
+    if (seconds === 0) return 'bg-gray-100 dark:bg-gray-800'
     const ratio = seconds / maxSecs
     if (ratio < 0.25) return 'bg-teal/20'
     if (ratio < 0.5) return 'bg-teal/40'
@@ -1037,7 +1037,7 @@ function CalendarTab({
             <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-muted">Less</span>
-                <div className="w-4 h-4 rounded bg-gray-100" />
+                <div className="w-4 h-4 rounded bg-gray-100 dark:bg-gray-800" />
                 <div className="w-4 h-4 rounded bg-teal/20" />
                 <div className="w-4 h-4 rounded bg-teal/40" />
                 <div className="w-4 h-4 rounded bg-teal/60" />
@@ -1135,7 +1135,7 @@ function FavouriteRoomsTab({
                       <span className="text-sm text-muted ml-2 shrink-0">{r.percentage}%</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full"
                           style={{
@@ -1322,7 +1322,7 @@ function PeersTab({
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div className="h-full bg-teal/50 rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-[10px] text-muted shrink-0 truncate max-w-[160px]">

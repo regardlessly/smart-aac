@@ -24,6 +24,63 @@ def _local_hour_to_utc(target_date, local_hour):
     return utc_dt.replace(tzinfo=None)
 
 
+def _merge_intervals(intervals):
+    """Merge overlapping (start, end) intervals. Returns merged list."""
+    if not intervals:
+        return []
+    sorted_iv = sorted(intervals, key=lambda x: x[0])
+    merged = [sorted_iv[0]]
+    for start, end in sorted_iv[1:]:
+        if start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def _aggregate_presences_by_room(presences, day_start, day_end):
+    """Aggregate presence records into room_agg dict, merging overlapping intervals.
+
+    Skips overnight carryover sessions (arrived before day_start) to avoid
+    phantom duration from stale sessions that were never properly closed.
+
+    Returns room_agg: {room_id: {room_name, duration_seconds, session_count, first_arrival}}
+    """
+    # Collect intervals per room
+    room_intervals: dict[int, dict] = {}
+    for _pid, room_id, room_name, arrived, last_seen in presences:
+        rid = room_id or 0
+        if not arrived or not last_seen:
+            continue
+        # Skip overnight carryover sessions — these are stale sessions from
+        # the previous day that were never properly closed
+        if arrived < day_start:
+            continue
+        eff_start = max(arrived, day_start)
+        eff_end = min(last_seen, day_end)
+        if eff_end <= eff_start:
+            continue
+        if rid not in room_intervals:
+            room_intervals[rid] = {
+                'room_name': room_name or 'Unknown',
+                'intervals': [],
+            }
+        room_intervals[rid]['intervals'].append((eff_start, eff_end))
+
+    # Merge overlapping intervals and compute totals
+    room_agg: dict[int, dict] = {}
+    for rid, data in room_intervals.items():
+        merged = _merge_intervals(data['intervals'])
+        total_secs = sum((e - s).total_seconds() for s, e in merged)
+        room_agg[rid] = {
+            'room_name': data['room_name'],
+            'duration_seconds': total_secs,
+            'session_count': len(merged),
+            'first_arrival': merged[0][0],
+        }
+    return room_agg
+
+
 # ── Room Occupancy Trending ──────────────────────────────────────
 
 
@@ -217,32 +274,37 @@ def member_summary(member_id):
     for s in summaries:
         day_seconds[s.date] = day_seconds.get(s.date, 0) + s.total_seconds
 
-    # ── For today: fall back to raw presences (not yet summarized) ──
+    # ── For today: always use raw presences (summary may be stale) ──
     today = date.today()
-    if today not in day_seconds:
-        cctv_start = current_app.config.get('CCTV_START_HOUR', 7)
-        cctv_end = current_app.config.get('CCTV_END_HOUR', 22)
-        day_start = _local_hour_to_utc(today, cctv_start)
-        day_end = _local_hour_to_utc(today, cctv_end)
+    cctv_start = current_app.config.get('CCTV_START_HOUR', 7)
+    cctv_end = current_app.config.get('CCTV_END_HOUR', 22)
+    day_start = _local_hour_to_utc(today, cctv_start)
+    day_end = _local_hour_to_utc(today, cctv_end)
 
-        today_presences = SeniorPresence.query.filter(
-            SeniorPresence.senior_id == member_id,
-            SeniorPresence.status == 'identified',
-            SeniorPresence.arrived_at < day_end,
-            SeniorPresence.last_seen_at >= day_start,
-        ).all()
+    today_presences = SeniorPresence.query.filter(
+        SeniorPresence.senior_id == member_id,
+        SeniorPresence.status == 'identified',
+        SeniorPresence.arrived_at < day_end,
+        SeniorPresence.last_seen_at >= day_start,
+    ).all()
 
-        today_secs = 0
-        for p in today_presences:
-            if not p.arrived_at or not p.last_seen_at:
-                continue
-            eff_start = max(p.arrived_at, day_start)
-            eff_end = min(p.last_seen_at, day_end)
-            if eff_end > eff_start:
-                today_secs += (eff_end - eff_start).total_seconds()
+    # Merge overlapping intervals to avoid double-counting
+    # Skip overnight carryover sessions
+    intervals = []
+    for p in today_presences:
+        if not p.arrived_at or not p.last_seen_at:
+            continue
+        if p.arrived_at < day_start:
+            continue
+        eff_start = max(p.arrived_at, day_start)
+        eff_end = min(p.last_seen_at, day_end)
+        if eff_end > eff_start:
+            intervals.append((eff_start, eff_end))
 
-        if today_secs > 0:
-            day_seconds[today] = today_secs
+    merged = _merge_intervals(intervals)
+    today_secs = sum((e - s).total_seconds() for s, e in merged)
+    if today_secs > 0:
+        day_seconds[today] = today_secs
 
     total_days = len(day_seconds)
     total_secs = sum(day_seconds.values())
@@ -440,17 +502,7 @@ def member_duration(member_id):
     # room_id → {room_name, duration_seconds, session_count, first_arrival}
     room_agg: dict[int, dict] = {}
 
-    for rid, room_name, dur, sess, first_seen in summaries:
-        r = rid or 0
-        room_agg[r] = {
-            'room_name': room_name or 'Unknown',
-            'duration_seconds': dur,
-            'session_count': sess,
-            'first_arrival': first_seen,
-        }
-
-    # For today, always merge raw SeniorPresence to catch rooms
-    # added after the summary job ran
+    # For today, always use raw presences (summaries may be stale)
     if target_date == date.today():
         cctv_start = current_app.config.get('CCTV_START_HOUR', 7)
         cctv_end = current_app.config.get('CCTV_END_HOUR', 22)
@@ -472,30 +524,20 @@ def member_duration(member_id):
             SeniorPresence.last_seen_at,
         ).order_by(Room.name).all()
 
-        # Only add rooms NOT already in summaries
-        summarized_rooms = set(room_agg.keys())
-        for _pid, room_id, room_name, arrived, last_seen in presences:
-            rid = room_id or 0
-            if rid in summarized_rooms:
-                continue
-            if not arrived or not last_seen:
-                continue
-            eff_start = max(arrived, day_start)
-            eff_end = min(last_seen, day_end)
-            dur = max(0, (eff_end - eff_start).total_seconds())
-            if rid not in room_agg:
-                room_agg[rid] = {
-                    'room_name': room_name or 'Unknown',
-                    'duration_seconds': 0,
-                    'session_count': 0,
-                    'first_arrival': eff_start,
-                }
-            room_agg[rid]['duration_seconds'] += dur
-            room_agg[rid]['session_count'] += 1
-            if eff_start < room_agg[rid]['first_arrival']:
-                room_agg[rid]['first_arrival'] = eff_start
+        room_agg = _aggregate_presences_by_room(presences, day_start, day_end)
 
-    elif not summaries:
+    elif summaries:
+        # Past date with summaries — use them
+        for rid, room_name, dur, sess, first_seen in summaries:
+            r = rid or 0
+            room_agg[r] = {
+                'room_name': room_name or 'Unknown',
+                'duration_seconds': dur,
+                'session_count': sess,
+                'first_arrival': first_seen,
+            }
+
+    else:
         # Past date with no summaries — fall back to raw presences
         cctv_start = current_app.config.get('CCTV_START_HOUR', 7)
         cctv_end = current_app.config.get('CCTV_END_HOUR', 22)
@@ -517,24 +559,7 @@ def member_duration(member_id):
             SeniorPresence.last_seen_at,
         ).order_by(Room.name).all()
 
-        for _pid, room_id, room_name, arrived, last_seen in presences:
-            if not arrived or not last_seen:
-                continue
-            eff_start = max(arrived, day_start)
-            eff_end = min(last_seen, day_end)
-            dur = max(0, (eff_end - eff_start).total_seconds())
-            rid = room_id or 0
-            if rid not in room_agg:
-                room_agg[rid] = {
-                    'room_name': room_name or 'Unknown',
-                    'duration_seconds': 0,
-                    'session_count': 0,
-                    'first_arrival': eff_start,
-                }
-            room_agg[rid]['duration_seconds'] += dur
-            room_agg[rid]['session_count'] += 1
-            if eff_start < room_agg[rid]['first_arrival']:
-                room_agg[rid]['first_arrival'] = eff_start
+        room_agg = _aggregate_presences_by_room(presences, day_start, day_end)
 
     # Build entries from aggregated data
     entries = []
@@ -616,20 +641,30 @@ def _today_raw_seconds_by_room(member_id):
         SeniorPresence.last_seen_at,
     ).all()
 
-    room_data: dict = {}
+    # Collect intervals per room, then merge overlapping ones
+    room_intervals: dict[int, dict] = {}
     for rid, rname, arrived, last_seen in presences:
         if not arrived or not last_seen:
             continue
+        # Skip overnight carryover sessions
+        if arrived < day_start:
+            continue
         eff_start = max(arrived, day_start)
         eff_end = min(last_seen, day_end)
-        dur = max(0, (eff_end - eff_start).total_seconds())
-        if dur <= 0:
+        if eff_end <= eff_start:
             continue
         key = rid or 0
-        if key not in room_data:
-            room_data[key] = {'room_name': rname or 'Unknown',
-                              'total_seconds': 0}
-        room_data[key]['total_seconds'] += dur
+        if key not in room_intervals:
+            room_intervals[key] = {'room_name': rname or 'Unknown',
+                                   'intervals': []}
+        room_intervals[key]['intervals'].append((eff_start, eff_end))
+
+    room_data: dict = {}
+    for key, data in room_intervals.items():
+        merged = _merge_intervals(data['intervals'])
+        total_secs = sum((e - s).total_seconds() for s, e in merged)
+        room_data[key] = {'room_name': data['room_name'],
+                          'total_seconds': total_secs}
 
     return room_data
 

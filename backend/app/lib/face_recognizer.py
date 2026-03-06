@@ -1499,7 +1499,8 @@ class FaceRecognizer:
                  capture_interval=2, analyse_every=5,
                  det_size=(640, 640), output_dir=None,
                  auto_learn=True, auto_learn_threshold=0.35,
-                 max_auto_learn_per_person=15):
+                 max_auto_learn_per_person=15,
+                 save_captures=True):
         """
         Args:
             cameras: list of {"name": str, "url": str or int}
@@ -1514,6 +1515,7 @@ class FaceRecognizer:
             auto_learn: enable auto-learning of new face angles from CCTV
             auto_learn_threshold: minimum similarity for auto-learn
             max_auto_learn_per_person: cap auto-learned images per person
+            save_captures: save capture frames and alerts to disk (default: True)
         """
         if not cameras:
             raise ValueError("At least one camera is required")
@@ -1528,6 +1530,7 @@ class FaceRecognizer:
         self._auto_learn = auto_learn
         self._auto_learn_threshold = auto_learn_threshold
         self._max_auto_learn_per_person = max_auto_learn_per_person
+        self._save_captures = save_captures
 
         self._output_dir = output_dir or tempfile.mkdtemp(prefix="face_recognizer_")
         os.makedirs(self._output_dir, exist_ok=True)
@@ -1785,6 +1788,7 @@ class FaceRecognizer:
             camera_captures_dir, alert_dir,
             self._alerts_lists[camera_name], legacy_stats,
             on_frame_analysed=_on_frame,
+            save_captures=self._save_captures,
         )
 
         # Sync legacy dict back to SessionData
@@ -1967,7 +1971,7 @@ class FaceRecognizer:
 def analyse_batch(batch_frames, batch_timestamps, engine,
                   known_faces_dir, camera_name,
                   captures_dir, alert_dir, alerts_list, session_stats,
-                  on_frame_analysed=None):
+                  on_frame_analysed=None, save_captures=True):
     """
     Analyse a batch of captured frames with iterative self-learning.
 
@@ -2218,12 +2222,14 @@ def analyse_batch(batch_frames, batch_timestamps, engine,
                     ts_list[r['name']].append(ts_str)
                 session_stats['person_timestamps'] = ts_list
 
-        # Save annotated frame
+        # Annotate frame (for dashboard callback / SSE)
         annotated = annotate_frame(frame, face_results, camera_name,
                                    person_boxes=person_boxes)
-        capture_filename = f"{safe_name}_{cap_time.strftime('%Y%m%d_%H%M%S')}.jpg"
-        capture_path = os.path.join(camera_captures_dir, capture_filename)
-        cv2.imwrite(capture_path, annotated)
+        # Only save to disk if save_captures is enabled
+        if save_captures:
+            capture_filename = f"{safe_name}_{cap_time.strftime('%Y%m%d_%H%M%S')}.jpg"
+            capture_path = os.path.join(camera_captures_dir, capture_filename)
+            cv2.imwrite(capture_path, annotated)
 
         # Dashboard callback for live updates
         if on_frame_analysed:
@@ -2238,7 +2244,7 @@ def analyse_batch(batch_frames, batch_timestamps, engine,
                 batch_stranger_results = face_results
 
     # Log ONE stranger alert per batch (not per frame, not per pass)
-    if batch_has_stranger and batch_stranger_frame is not None:
+    if batch_has_stranger and batch_stranger_frame is not None and save_captures:
         log_stranger_alert(batch_stranger_frame, batch_stranger_results,
                            camera_name, alert_dir, alerts_list)
 

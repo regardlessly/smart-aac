@@ -90,23 +90,17 @@ def heatmap():
             adjusted = max(0, cam_strangers - identified_elsewhere)
             strangers = max(strangers, adjusted)
         occ = known + strangers
-        cap = room.max_capacity or 1
-        if occ == 0:
-            color_level = 'empty'
-        elif occ / cap <= 0.3:
-            color_level = 'low'
-        elif occ / cap <= 0.7:
-            color_level = 'medium'
-        else:
-            color_level = 'high'
+        # Use the model's threshold logic
+        room.current_occupancy = occ   # temp set for color calc
         result.append({
             'id': room.id,
             'name': room.name,
             'occupancy': occ,
             'max_capacity': room.max_capacity,
+            'moderate_threshold': room.moderate_threshold,
             'identified': known,
             'strangers': strangers,
-            'color_level': color_level,
+            'color_level': room._get_color_level(occ),
         })
 
     return jsonify(result)
@@ -121,9 +115,11 @@ def create_room():
     if not name:
         return jsonify({'error': 'name is required'}), 400
 
+    mod = data.get('moderate_threshold')
     room = Room(
         name=name,
         max_capacity=int(data.get('max_capacity', 20)),
+        moderate_threshold=int(mod) if mod is not None else None,
     )
     db.session.add(room)
     db.session.commit()
@@ -143,6 +139,9 @@ def update_room(room_id):
         room.name = data['name'].strip()
     if 'max_capacity' in data:
         room.max_capacity = int(data['max_capacity'])
+    if 'moderate_threshold' in data:
+        val = data['moderate_threshold']
+        room.moderate_threshold = int(val) if val is not None else None
 
     db.session.commit()
     return jsonify(room.to_dict())

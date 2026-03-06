@@ -142,7 +142,7 @@ export default function HeatmapPage() {
                     )}
 
                     {/* Progress bar */}
-                    <div className="mt-3 h-2.5 bg-white/60 rounded-full overflow-hidden">
+                    <div className="mt-3 h-2.5 bg-white/60 dark:bg-white/10 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${
                           room.color_level === 'high' ? 'bg-coral' :

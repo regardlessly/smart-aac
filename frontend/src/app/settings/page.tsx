@@ -17,10 +17,11 @@ interface CameraForm {
 interface RoomForm {
   name: string
   max_capacity: number
+  moderate_threshold: number | null
 }
 
 const emptyCameraForm: CameraForm = { name: '', rtsp_url: '', room_id: null, enabled: true }
-const emptyRoomForm: RoomForm = { name: '', max_capacity: 20 }
+const emptyRoomForm: RoomForm = { name: '', max_capacity: 20, moderate_threshold: null }
 
 export default function SettingsPage() {
   const [cameras, setCameras] = useState<Camera[]>([])
@@ -202,7 +203,7 @@ export default function SettingsPage() {
 
   const startEditRoom = (room: Room) => {
     setEditingRoomId(room.id)
-    setEditRoomForm({ name: room.name, max_capacity: room.max_capacity })
+    setEditRoomForm({ name: room.name, max_capacity: room.max_capacity, moderate_threshold: room.moderate_threshold })
     setShowAddRoomForm(false)
   }
 
@@ -309,6 +310,7 @@ export default function SettingsPage() {
                   <tr className="text-left text-xs text-muted uppercase tracking-wide border-b border-border">
                     <th className="pb-2 pr-4 font-semibold">Name</th>
                     <th className="pb-2 pr-4 font-semibold text-center">Capacity</th>
+                    <th className="pb-2 pr-4 font-semibold text-center">Moderate</th>
                     <th className="pb-2 pr-4 font-semibold">Cameras</th>
                     <th className="pb-2 font-semibold text-right">Actions</th>
                   </tr>
@@ -323,7 +325,7 @@ export default function SettingsPage() {
                           value={addRoomForm.name}
                           onChange={e => setAddRoomForm(f => ({ ...f, name: e.target.value }))}
                           placeholder="Room name"
-                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text focus:outline-none focus:border-teal"
+                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
                         />
                       </td>
                       <td className="py-2 pr-3">
@@ -332,7 +334,17 @@ export default function SettingsPage() {
                           value={addRoomForm.max_capacity}
                           onChange={e => setAddRoomForm(f => ({ ...f, max_capacity: parseInt(e.target.value) || 0 }))}
                           min={1}
-                          className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text text-center focus:outline-none focus:border-teal"
+                          className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-teal"
+                        />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <input
+                          type="number"
+                          value={addRoomForm.moderate_threshold ?? ''}
+                          onChange={e => setAddRoomForm(f => ({ ...f, moderate_threshold: e.target.value ? parseInt(e.target.value) : null }))}
+                          min={1}
+                          placeholder="Auto"
+                          className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-teal"
                         />
                       </td>
                       <td className="py-2 pr-3 text-muted text-xs">—</td>
@@ -366,7 +378,7 @@ export default function SettingsPage() {
                             type="text"
                             value={editRoomForm.name}
                             onChange={e => setEditRoomForm(f => ({ ...f, name: e.target.value }))}
-                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text focus:outline-none focus:border-teal"
+                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
                           />
                         </td>
                         <td className="py-2 pr-3">
@@ -375,7 +387,17 @@ export default function SettingsPage() {
                             value={editRoomForm.max_capacity}
                             onChange={e => setEditRoomForm(f => ({ ...f, max_capacity: parseInt(e.target.value) || 0 }))}
                             min={1}
-                            className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text text-center focus:outline-none focus:border-teal"
+                            className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-teal"
+                          />
+                        </td>
+                        <td className="py-2 pr-3">
+                          <input
+                            type="number"
+                            value={editRoomForm.moderate_threshold ?? ''}
+                            onChange={e => setEditRoomForm(f => ({ ...f, moderate_threshold: e.target.value ? parseInt(e.target.value) : null }))}
+                            min={1}
+                            placeholder="Auto"
+                            className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-teal"
                           />
                         </td>
                         <td className="py-2 pr-3 text-muted text-xs">
@@ -406,6 +428,9 @@ export default function SettingsPage() {
                           <span className="font-medium text-text">{room.name}</span>
                         </td>
                         <td className="py-3 pr-4 text-center text-muted">{room.max_capacity}</td>
+                        <td className="py-3 pr-4 text-center text-muted">
+                          {room.moderate_threshold ?? <span className="text-xs italic">Auto</span>}
+                        </td>
                         <td className="py-3 pr-4 text-muted text-xs">
                           {camerasInRoom(room.id).map(c => c.name).join(', ') || '—'}
                         </td>
@@ -450,7 +475,7 @@ export default function SettingsPage() {
 
                   {rooms.length === 0 && !showAddRoomForm && (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-muted text-sm">
+                      <td colSpan={5} className="py-8 text-center text-muted text-sm">
                         No rooms configured.{' '}
                         <button
                           onClick={() => setShowAddRoomForm(true)}
@@ -502,7 +527,7 @@ export default function SettingsPage() {
                           value={addForm.name}
                           onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
                           placeholder="Camera name"
-                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text focus:outline-none focus:border-teal"
+                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
                         />
                       </td>
                       <td className="py-2 pr-3">
@@ -511,14 +536,14 @@ export default function SettingsPage() {
                           value={addForm.rtsp_url}
                           onChange={e => setAddForm(f => ({ ...f, rtsp_url: e.target.value }))}
                           placeholder="rtsp://..."
-                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text focus:outline-none focus:border-teal font-mono text-xs"
+                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal font-mono text-xs"
                         />
                       </td>
                       <td className="py-2 pr-3">
                         <select
                           value={addForm.room_id ?? ''}
                           onChange={e => setAddForm(f => ({ ...f, room_id: e.target.value ? parseInt(e.target.value) : null }))}
-                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text focus:outline-none focus:border-teal"
+                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
                         >
                           <option value="">— No Room —</option>
                           {rooms.map(r => (
@@ -530,7 +555,7 @@ export default function SettingsPage() {
                         <button
                           onClick={() => setAddForm(f => ({ ...f, enabled: !f.enabled }))}
                           className={`w-10 h-5 rounded-full relative transition-colors ${
-                            addForm.enabled ? 'bg-teal' : 'bg-gray-300'
+                            addForm.enabled ? 'bg-teal' : 'bg-gray-300 dark:bg-gray-600'
                           }`}
                         >
                           <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${
@@ -568,7 +593,7 @@ export default function SettingsPage() {
                             type="text"
                             value={editForm.name}
                             onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text focus:outline-none focus:border-teal"
+                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
                           />
                         </td>
                         <td className="py-2 pr-3">
@@ -576,14 +601,14 @@ export default function SettingsPage() {
                             type="text"
                             value={editForm.rtsp_url}
                             onChange={e => setEditForm(f => ({ ...f, rtsp_url: e.target.value }))}
-                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text focus:outline-none focus:border-teal font-mono text-xs"
+                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal font-mono text-xs"
                           />
                         </td>
                         <td className="py-2 pr-3">
                           <select
                             value={editForm.room_id ?? ''}
                             onChange={e => setEditForm(f => ({ ...f, room_id: e.target.value ? parseInt(e.target.value) : null }))}
-                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-white text-text focus:outline-none focus:border-teal"
+                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
                           >
                             <option value="">— No Room —</option>
                             {rooms.map(r => (
@@ -595,7 +620,7 @@ export default function SettingsPage() {
                           <button
                             onClick={() => setEditForm(f => ({ ...f, enabled: !f.enabled }))}
                             className={`w-10 h-5 rounded-full relative transition-colors ${
-                              editForm.enabled ? 'bg-teal' : 'bg-gray-300'
+                              editForm.enabled ? 'bg-teal' : 'bg-gray-300 dark:bg-gray-600'
                             }`}
                           >
                             <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${
@@ -651,7 +676,7 @@ export default function SettingsPage() {
                           <button
                             onClick={() => handleToggleEnabled(cam)}
                             className={`w-10 h-5 rounded-full relative transition-colors ${
-                              cam.enabled ? 'bg-teal' : 'bg-gray-300'
+                              cam.enabled ? 'bg-teal' : 'bg-gray-300 dark:bg-gray-600'
                             }`}
                           >
                             <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${

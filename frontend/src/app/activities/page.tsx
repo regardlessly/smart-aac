@@ -56,10 +56,10 @@ export default function ActivitiesPage() {
   // Status badge
   const statusBadge = (status: string) => {
     const s = status.toLowerCase()
-    if (s === 'active' || s === 'ongoing') return 'bg-emerald-100 text-emerald-700'
-    if (s === 'done' || s === 'completed') return 'bg-gray-100 text-gray-600'
-    if (s === 'cancelled' || s === 'cancel') return 'bg-red-100 text-red-600'
-    return 'bg-blue-100 text-blue-700'
+    if (s === 'active' || s === 'ongoing') return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+    if (s === 'done' || s === 'completed') return 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+    if (s === 'cancelled' || s === 'cancel') return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+    return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
   }
 
   return (
@@ -91,9 +91,9 @@ export default function ActivitiesPage() {
           {loading && activities.length === 0 ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl border border-border p-4 animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
-                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div key={i} className="bg-panel rounded-xl border border-border p-4 animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
                 </div>
               ))}
             </div>
@@ -118,7 +118,7 @@ export default function ActivitiesPage() {
                 return (
                   <div
                     key={activity.id ?? index}
-                    className="bg-white rounded-xl border border-border p-4 hover:shadow-sm transition-shadow"
+                    className="bg-panel rounded-xl border border-border p-4 hover:shadow-sm transition-shadow"
                   >
                     <div className="flex-1 min-w-0">
                       {/* Title row */}
