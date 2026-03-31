@@ -31,23 +31,23 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo / Title */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-teal rounded-xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 bg-primary rounded-[14px] flex items-center justify-center mx-auto mb-4" style={{ boxShadow: '0 6px 24px rgba(61,114,232,0.13)' }}>
             <span className="text-white text-2xl font-bold">C</span>
           </div>
-          <h1 className="text-xl font-semibold text-text">Smart AAC Dashboard</h1>
-          <p className="text-sm text-muted mt-1">Sign in to continue</p>
+          <h1 className="text-[22px] font-bold text-text">Smart AAC Dashboard</h1>
+          <p className="text-[13px] text-muted mt-1">Sign in to continue</p>
         </div>
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="bg-panel rounded-xl border border-border p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-panel rounded-[14px] border border-border p-6 space-y-4" style={{ boxShadow: '0 2px 14px rgba(61,114,232,0.08)' }}>
           {error && (
-            <div className="bg-coral-light text-coral text-sm px-3 py-2 rounded-lg">
+            <div className="bg-coral-light text-coral text-[14px] px-3 py-2 rounded-[8px]">
               {error}
             </div>
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-text mb-1">
+            <label htmlFor="email" className="block text-[14px] font-semibold text-text mb-1">
               Email
             </label>
             <input
@@ -58,14 +58,14 @@ export default function LoginPage() {
               required
               autoComplete="email"
               autoFocus
-              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
-                         placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              className="w-full px-3 py-2 bg-white border border-border rounded-[8px] text-[14px] text-text
+                         placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-text mb-1">
+            <label htmlFor="password" className="block text-[14px] font-semibold text-text mb-1">
               Password
             </label>
             <input
@@ -75,8 +75,8 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
-                         placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              className="w-full px-3 py-2 bg-white border border-border rounded-[8px] text-[14px] text-text
+                         placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               placeholder="••••••••"
             />
           </div>
@@ -84,10 +84,10 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-teal hover:bg-teal-dark text-white text-sm font-medium rounded-lg
+            className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white text-[14px] font-semibold rounded-[14px]
                        transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 

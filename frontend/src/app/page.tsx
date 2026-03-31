@@ -58,7 +58,7 @@ export default function DashboardPage() {
             <div className="text-muted text-sm">{data.error}</div>
             <button
               onClick={data.refresh}
-              className="px-4 py-2 bg-teal text-white rounded-lg text-sm hover:bg-teal-dark"
+              className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-dark"
             >
               Retry
             </button>
@@ -84,8 +84,8 @@ export default function DashboardPage() {
               value={stats.seniors_present}
               subtitle={`of ${stats.seniors_max} registered`}
               icon="👥"
-              color="text-teal"
-              bgColor="bg-teal/10"
+              color="text-primary"
+              bgColor="bg-primary/10"
             />
             <StatCard
               label="Unidentified"

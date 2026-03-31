@@ -1,37 +1,99 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap');
 
 @theme {
-  /* Brand Guidelines: Modern B2B SaaS */
-  --color-navy: #1155cc;
-  --color-navy-dark: #0d44a3;
-  --color-navy-light: #3a75d6;
-  --color-teal: #1155cc;
-  --color-teal-dark: #0d44a3;
-  --color-teal-light: #3a75d6;
-  --color-mint: #cfe2f3;
-  --color-mint-dark: #a4c8e8;
-  --color-orange: #e67c00;
-  --color-orange-light: #fce4c0;
-  --color-coral: #cc1111;
-  --color-coral-light: #f8d0d0;
-  --color-green: #1a8a3e;
-  --color-green-light: #d4edda;
+  /* ── CaritaHub Brand Design System ────────────────────────────── */
+
+  /* Primary */
+  --color-primary: #3D72E8;
+  --color-primary-dark: #2D5EC7;
+  --color-primary-light: #EBF2FF;
+
+  /* Aliases for backward compat (teal/navy mapped to primary) */
+  --color-navy: #3D72E8;
+  --color-navy-dark: #2D5EC7;
+  --color-navy-light: #EBF2FF;
+  --color-teal: #3D72E8;
+  --color-teal-dark: #2D5EC7;
+  --color-teal-light: #EBF2FF;
+  --color-sky: #3D72E8;
+  --color-sky-light: #EBF2FF;
+
+  /* Accent */
+  --color-accent: #E07820;
+  --color-accent-light: #FFF3E0;
+  --color-orange: #E07820;
+  --color-orange-light: #FFF3E0;
+
+  /* Semantic — Success */
+  --color-green: #2E7D32;
+  --color-green-light: #E8F5E9;
+
+  /* Semantic — Danger */
+  --color-coral: #E53935;
+  --color-coral-light: #FFEBEE;
+
+  /* Semantic — Purple (AI/Engagement) */
+  --color-purple: #6B46C1;
+  --color-purple-light: #F3E8FF;
+
+  /* Semantic — Clinical/Health */
+  --color-health: #00796B;
+  --color-health-light: #E0F2F1;
+
+  /* Semantic — Warning */
   --color-amber: #b8860b;
   --color-amber-light: #fef3cd;
-  --color-sky: #1155cc;
-  --color-sky-light: #cfe2f3;
-  --color-panel: #ffffff;
-  --color-surface: #efefef;
-  --color-border: #e0e0e0;
-  --color-muted: #666666;
-  --color-text: #000000;
-  --color-text-secondary: #444444;
+
+  /* Neutral */
+  --color-text: #2C2C3E;
+  --color-text-secondary: #6B7280;
+  --color-muted: #6B7280;
+  --color-background: #F2F2F5;
+  --color-surface: #F2F2F5;
+  --color-border: #D0D8EE;
+  --color-panel: #FFFFFF;
+  --color-mint: #EBF2FF;
+  --color-mint-dark: #B8CFFA;
+
+  /* Shadows (blue-tinted per brand) */
+  --shadow-card: 0 2px 14px rgba(61, 114, 232, 0.08);
+  --shadow-modal: 0 6px 24px rgba(61, 114, 232, 0.13);
+  --shadow-sheet: 0 8px 32px rgba(61, 114, 232, 0.16);
+
+  /* Border radius */
+  --radius-badge: 20px;
+  --radius-input: 8px;
+  --radius-card: 14px;
+  --radius-avatar: 50%;
+
+  /* Spacing (4px grid) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-base: 16px;
+  --spacing-lg: 20px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+  --spacing-3xl: 48px;
+
+  /* Typography sizes — Web Admin */
+  --font-size-page-title: 22px;
+  --font-size-section: 17px;
+  --font-size-card-title: 15px;
+  --font-size-body: 14px;
+  --font-size-nav: 13px;
+  --font-size-caption: 11px;
+  --font-size-stat: 26px;
 }
 
 body {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  background-color: #ffffff;
+  font-family: 'Lexend', sans-serif;
+  font-weight: 400;
+  background-color: var(--color-background);
   color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /* Scrollbar */

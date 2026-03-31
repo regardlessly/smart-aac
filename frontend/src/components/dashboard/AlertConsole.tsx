@@ -26,7 +26,7 @@ export default memo(function AlertConsole({ alerts, onAcknowledge }: Props) {
       title="Alert Console"
       subtitle={`${active.length} active alert${active.length !== 1 ? 's' : ''}`}
       action={
-        <a href="/alerts" className="text-xs text-teal hover:underline">
+        <a href="/alerts" className="text-xs text-primary hover:underline">
           View All
         </a>
       }

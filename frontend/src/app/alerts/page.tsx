@@ -149,7 +149,7 @@ export default function AlertsPage() {
             <p className="text-muted text-sm mt-1">{error}</p>
             <button
               onClick={() => fetchAlerts(1)}
-              className="mt-4 px-4 py-2 bg-teal text-white rounded-lg text-sm hover:bg-teal/90"
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90"
             >
               Retry
             </button>
@@ -254,7 +254,7 @@ export default function AlertsPage() {
                 placeholder="Search alerts..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-teal"
+                className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-sm text-text placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
 
@@ -262,7 +262,7 @@ export default function AlertsPage() {
             {selected.size > 0 && (
               <button
                 onClick={handleBulkAcknowledge}
-                className="px-3 py-1.5 bg-teal text-white rounded-lg text-xs font-medium hover:bg-teal/90"
+                className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-medium hover:bg-primary/90"
               >
                 Acknowledge {selected.size} selected
               </button>
@@ -277,7 +277,7 @@ export default function AlertsPage() {
               unackedOnPage.length > 0 ? (
                 <button
                   onClick={toggleSelectAll}
-                  className="text-xs text-teal hover:underline"
+                  className="text-xs text-primary hover:underline"
                 >
                   {selected.size === unackedOnPage.length ? 'Deselect All' : 'Select All'}
                 </button>
@@ -333,7 +333,7 @@ export default function AlertsPage() {
                         onClick={() => handlePageChange(p)}
                         className={`w-8 h-8 rounded text-xs font-medium ${
                           p === page
-                            ? 'bg-teal text-white'
+                            ? 'bg-primary text-white'
                             : 'text-muted hover:text-text hover:bg-surface'
                         }`}
                       >
@@ -371,8 +371,8 @@ function StatCard({
   return (
     <button
       onClick={onClick}
-      className={`${bgColor} rounded-xl p-4 text-left transition-all ${
-        active ? 'ring-2 ring-teal' : ''
+      className={`${bgColor} rounded-[14px] p-4 text-left transition-all ${
+        active ? 'ring-2 ring-primary' : ''
       } ${onClick ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
     >
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
@@ -440,7 +440,7 @@ function AlertRow({
       {!alert.acknowledged && (
         <button
           onClick={onAcknowledge}
-          className="text-xs text-teal hover:underline shrink-0 mt-1"
+          className="text-xs text-primary hover:underline shrink-0 mt-1"
         >
           Acknowledge
         </button>

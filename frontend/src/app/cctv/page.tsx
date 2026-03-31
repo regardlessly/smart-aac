@@ -213,7 +213,7 @@ export default function CCTVPage() {
             <p className="text-muted text-sm mt-1">{error}</p>
             <button
               onClick={fetchData}
-              className="mt-4 px-4 py-2 bg-teal text-white rounded-lg text-sm hover:bg-teal/90"
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90"
             >
               Retry
             </button>
@@ -273,7 +273,7 @@ export default function CCTVPage() {
                   return (
                     <div
                       key={cam.id}
-                      className="rounded-xl overflow-hidden border border-border bg-gray-900 cursor-pointer hover:ring-2 hover:ring-teal/50 transition-all"
+                      className="rounded-[14px] overflow-hidden border border-border bg-gray-900 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                       onClick={() => setSelectedCam(cam)}
                     >
                       {/* Feed area */}
@@ -488,7 +488,7 @@ export default function CCTVPage() {
                           {status.cameras.map((name) => (
                             <span
                               key={name}
-                              className="text-[10px] px-2 py-1 rounded-full bg-teal/10 text-teal font-medium"
+                              className="text-[10px] px-2 py-1 rounded-full bg-primary/10 text-primary font-medium"
                             >
                               {name}
                             </span>
@@ -554,7 +554,7 @@ export default function CCTVPage() {
                   {/* Modal body */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     {/* Expanded snapshot */}
-                    <div className="rounded-xl overflow-hidden bg-gray-900 border border-border">
+                    <div className="rounded-[14px] overflow-hidden bg-gray-900 border border-border">
                       <div className="aspect-video relative flex items-center justify-center bg-navy-dark">
                         {snap?.snapshot_b64 ? (
                           <img
@@ -582,15 +582,15 @@ export default function CCTVPage() {
 
                     {/* Stats row */}
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="bg-surface rounded-xl px-4 py-3">
+                      <div className="bg-surface rounded-[14px] px-4 py-3">
                         <div className="text-2xl font-bold text-text">{snap?.identified_count ?? 0}</div>
                         <div className="text-xs text-muted uppercase tracking-wide">Identified</div>
                       </div>
-                      <div className="bg-surface rounded-xl px-4 py-3">
+                      <div className="bg-surface rounded-[14px] px-4 py-3">
                         <div className="text-2xl font-bold text-coral">{snap?.unidentified_count ?? 0}</div>
                         <div className="text-xs text-muted uppercase tracking-wide">Unidentified</div>
                       </div>
-                      <div className="bg-surface rounded-xl px-4 py-3">
+                      <div className="bg-surface rounded-[14px] px-4 py-3">
                         <div className="text-2xl font-bold text-text">{(snap?.identified_count ?? 0) + (snap?.unidentified_count ?? 0)}</div>
                         <div className="text-xs text-muted uppercase tracking-wide">Total Persons</div>
                       </div>

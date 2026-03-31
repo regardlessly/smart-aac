@@ -18,7 +18,7 @@ export default memo(function CCTVGrid({ cameras, snapshots }: Props) {
       title="CCTV Feeds"
       subtitle={`${cameras.filter(c => c.enabled).length} of ${cameras.length} cameras active`}
       action={
-        <a href="/cctv" className="text-xs text-teal hover:underline">
+        <a href="/cctv" className="text-xs text-primary hover:underline">
           Full Screen
         </a>
       }

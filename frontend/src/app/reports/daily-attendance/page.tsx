@@ -54,7 +54,7 @@ export default function DailyAttendancePage() {
             </a>
             <span
               className="px-4 py-2.5 text-sm font-bold"
-              style={{ color: '#1155cc', borderBottom: '2px solid #1155cc' }}
+              style={{ color: '#3D72E8', borderBottom: '2px solid #3D72E8' }}
             >
               Daily Attendance
             </span>
@@ -94,7 +94,7 @@ export default function DailyAttendancePage() {
               <button
                 onClick={fetchData}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                style={{ backgroundColor: '#1155cc' }}
+                style={{ backgroundColor: '#3D72E8' }}
               >
                 Retry
               </button>
@@ -123,7 +123,7 @@ export default function DailyAttendancePage() {
               </div>
 
               {/* Attendance Table */}
-              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #efefef' }}>
+              <div className="rounded-[14px] overflow-hidden" style={{ border: '1px solid #efefef' }}>
                 <div className="px-5 py-4" style={{ backgroundColor: '#fff', borderBottom: '1px solid #efefef' }}>
                   <h2 className="text-[20px] font-bold" style={{ color: '#000' }}>
                     Seniors Detected
@@ -179,7 +179,7 @@ export default function DailyAttendancePage() {
                                 <span
                                   key={r}
                                   className="text-xs font-medium px-2 py-0.5 rounded-full"
-                                  style={{ backgroundColor: '#cfe2f3', color: '#1155cc' }}
+                                  style={{ backgroundColor: '#cfe2f3', color: '#3D72E8' }}
                                 >
                                   {r}
                                 </span>
@@ -223,15 +223,15 @@ function SummaryCard({ label, value, highlight }: {
 }) {
   return (
     <div
-      className="rounded-xl px-5 py-4"
+      className="rounded-[14px] px-5 py-4"
       style={{
         backgroundColor: highlight ? '#cfe2f3' : '#efefef',
-        border: highlight ? '1px solid #1155cc' : '1px solid #efefef',
+        border: highlight ? '1px solid #3D72E8' : '1px solid #efefef',
       }}
     >
       <div
         className="text-2xl font-bold"
-        style={{ color: highlight ? '#1155cc' : '#000' }}
+        style={{ color: highlight ? '#3D72E8' : '#000' }}
       >
         {value}
       </div>

@@ -12,6 +12,7 @@ def register_blueprints(app):
     from .reports import bp as reports_bp
     from .summary import bp as summary_bp
     from .logs import bp as logs_bp
+    from .settings import bp as settings_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -26,3 +27,4 @@ def register_blueprints(app):
     app.register_blueprint(reports_bp)
     app.register_blueprint(summary_bp)
     app.register_blueprint(logs_bp)
+    app.register_blueprint(settings_bp)

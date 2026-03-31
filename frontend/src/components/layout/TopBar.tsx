@@ -29,10 +29,10 @@ export default function TopBar({ connected, alertCount = 0 }: TopBarProps) {
   const initial = user?.name?.charAt(0)?.toUpperCase() || '?'
 
   return (
-    <header className="h-14 bg-panel border-b border-border flex items-center justify-between px-6 sticky top-0 z-20">
+    <header className="h-14 bg-panel border-b border-border flex items-center justify-between px-6 sticky top-0 z-20" style={{ boxShadow: '0 2px 14px rgba(61,114,232,0.08)' }}>
       {/* Left: Title + live indicator */}
       <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold text-text">Smart AAC Dashboard</h1>
+        <h1 className="text-[17px] font-bold text-text">Smart AAC Dashboard</h1>
         {connected !== undefined && (
           <div className="flex items-center gap-1.5">
             <div className={`w-2 h-2 rounded-full ${
@@ -47,7 +47,7 @@ export default function TopBar({ connected, alertCount = 0 }: TopBarProps) {
 
       {/* Right: Date, alerts, user, logout */}
       <div className="flex items-center gap-4">
-        <span className="text-sm text-text-secondary hidden sm:block">
+        <span className="text-[13px] text-muted hidden sm:block">
           {dateStr} &middot; {timeStr}
         </span>
 
@@ -63,7 +63,7 @@ export default function TopBar({ connected, alertCount = 0 }: TopBarProps) {
 
         {/* User info */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-teal rounded-full flex items-center justify-center text-white text-sm font-medium">
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-[13px] font-semibold">
             {initial}
           </div>
           {user && (

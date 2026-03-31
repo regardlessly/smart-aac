@@ -76,7 +76,7 @@ export default function ActivitiesPage() {
             <button
               onClick={fetchActivities}
               disabled={loading}
-              className="px-4 py-2 bg-teal text-white text-sm font-medium rounded-lg hover:bg-teal/90 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {loading ? 'Syncing…' : 'Sync from Odoo'}
             </button>
@@ -91,7 +91,7 @@ export default function ActivitiesPage() {
           {loading && activities.length === 0 ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="bg-panel rounded-xl border border-border p-4 animate-pulse">
+                <div key={i} className="bg-panel rounded-[14px] border border-border p-4 animate-pulse">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-2" />
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
                 </div>
@@ -118,7 +118,7 @@ export default function ActivitiesPage() {
                 return (
                   <div
                     key={activity.id ?? index}
-                    className="bg-panel rounded-xl border border-border p-4 hover:shadow-sm transition-shadow"
+                    className="bg-panel rounded-[14px] border border-border p-4 hover:shadow-sm transition-shadow"
                   >
                     <div className="flex-1 min-w-0">
                       {/* Title row */}

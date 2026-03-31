@@ -46,7 +46,7 @@ export default memo(function SeniorRoster({ roster }: Props) {
       title="Senior Roster"
       subtitle={`${todayRoster.length} attended today — ${activeCount} active, ${inactiveCount} departed`}
       action={
-        <Link href="/members" className="text-xs text-teal hover:underline">
+        <Link href="/members" className="text-xs text-primary hover:underline">
           View All
         </Link>
       }
@@ -78,18 +78,18 @@ export default memo(function SeniorRoster({ roster }: Props) {
                   {member.senior_id ? (
                     <Link
                       href={`/members/${member.senior_id}`}
-                      className="flex items-center gap-2 hover:text-teal transition-colors"
+                      className="flex items-center gap-2 hover:text-primary transition-colors"
                     >
-                      <span className="w-7 h-7 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                      <span className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
                         {member.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
                       </span>
-                      <span className="font-medium text-text hover:text-teal">
+                      <span className="font-medium text-text hover:text-primary">
                         {member.name}
                       </span>
                     </Link>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                      <span className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
                         {member.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
                       </span>
                       <span className="font-medium text-text">{member.name}</span>

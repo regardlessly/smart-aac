@@ -28,7 +28,7 @@ export default memo(function KioskLog({ events }: Props) {
       title="Kiosk Activity Log"
       subtitle={`${events.length} events today`}
       action={
-        <a href="/kiosk" className="text-xs text-teal hover:underline">
+        <a href="/kiosk" className="text-xs text-primary hover:underline">
           Full Log
         </a>
       }

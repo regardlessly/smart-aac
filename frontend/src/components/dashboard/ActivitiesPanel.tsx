@@ -36,7 +36,7 @@ export default memo(function ActivitiesPanel({ activities }: Props) {
       title="Today's Activities"
       subtitle={`${activities.length} scheduled`}
       action={
-        <a href="/activities" className="text-xs text-teal hover:underline">
+        <a href="/activities" className="text-xs text-primary hover:underline">
           View All
         </a>
       }

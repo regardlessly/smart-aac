@@ -155,6 +155,13 @@ export const api = {
     apiFetch<{ status: string; synced: number; skipped: number; errors: string[] }>(
       '/api/cameras/known-faces/sync-odoo', { method: 'POST' }),
 
+  // ── System Settings ──
+  getSettings: () =>
+    apiFetch<Record<string, number>>('/api/settings'),
+  updateSettings: (data: Record<string, number>) =>
+    apiFetch<{ updated: Record<string, number>; restart_required: boolean }>(
+      '/api/settings', { method: 'PUT', body: JSON.stringify(data) }),
+
   // ── Reports ──
   dailyAttendance: (params?: { date?: string }) => {
     const qs = new URLSearchParams()

@@ -18,7 +18,7 @@ function getLineColor(line: string): string {
   const l = line.toLowerCase()
   if (l.includes('error') || l.includes('failed') || l.includes('exception') || l.includes('traceback')) return '#ef4444'
   if (l.includes('warn') || l.includes('warning')) return '#f59e0b'
-  if (l.includes('camera_worker') || l.includes('face') || l.includes('embed') || l.includes('yolo') || l.includes('insightface')) return '#1155cc'
+  if (l.includes('camera_worker') || l.includes('face') || l.includes('embed') || l.includes('yolo') || l.includes('insightface')) return '#3D72E8'
   if (l.includes(' 200 ') || l.includes('ok') || l.includes('success') || l.includes('ready') || l.includes('started') || l.includes('running')) return '#16a34a'
   if (l.includes(' 4') || l.includes(' 5')) return '#f59e0b'
   return '#374151'
@@ -103,7 +103,7 @@ export default function LogsPage() {
                 onClick={() => setAutoScroll(a => !a)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                   autoScroll
-                    ? 'bg-sky-600 text-white border-sky-600'
+                    ? 'bg-primary text-white border-primary'
                     : 'bg-white text-text border-border hover:bg-surface'
                 }`}
               >
@@ -113,7 +113,7 @@ export default function LogsPage() {
                 onClick={() => setAutoRefresh(a => !a)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                   autoRefresh
-                    ? 'bg-teal text-white border-teal'
+                    ? 'bg-primary text-white border-primary'
                     : 'bg-white text-text border-border hover:bg-surface'
                 }`}
               >
@@ -131,7 +131,7 @@ export default function LogsPage() {
           {/* Camera Worker Status Banner */}
           {cameraStatus && (
             <div
-              className="rounded-xl border px-4 py-3 flex items-center gap-3"
+              className="rounded-[14px] border px-4 py-3 flex items-center gap-3"
               style={{
                 borderColor: statusColor[cameraStatus.status] + '40',
                 backgroundColor: statusColor[cameraStatus.status] + '10',
@@ -169,7 +169,7 @@ export default function LogsPage() {
           </div>
 
           {/* Log viewer */}
-          <div className="flex-1 overflow-hidden rounded-xl border border-border bg-gray-950 flex flex-col">
+          <div className="flex-1 overflow-hidden rounded-[14px] border border-border bg-gray-950 flex flex-col">
             <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800">
               <span className="text-xs text-gray-400 font-mono">
                 {tab === 'backend' ? '/tmp/smart-aac-backend.log' : '/tmp/smart-aac-frontend.log'}

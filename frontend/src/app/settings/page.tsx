@@ -46,6 +46,12 @@ export default function SettingsPage() {
   const [savingRoom, setSavingRoom] = useState(false)
   const [deleteRoomConfirm, setDeleteRoomConfirm] = useState<number | null>(null)
 
+  // System settings state
+  const [sysSettings, setSysSettings] = useState<Record<string, number>>({})
+  const [sysForm, setSysForm] = useState<Record<string, number>>({})
+  const [savingSys, setSavingSys] = useState(false)
+  const [sysEditing, setSysEditing] = useState(false)
+
   // Clear data state
   const [clearing, setClearing] = useState(false)
   const [clearConfirm, setClearConfirm] = useState(false)
@@ -55,12 +61,15 @@ export default function SettingsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [cams, rms] = await Promise.all([
+      const [cams, rms, settings] = await Promise.all([
         api.camerasAdmin(),
         api.rooms(),
+        api.getSettings(),
       ])
       setCameras(cams)
       setRooms(rms)
+      setSysSettings(settings)
+      setSysForm(settings)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load settings')
@@ -223,6 +232,31 @@ export default function SettingsPage() {
     }
   }
 
+  // ── System Settings ────────────────────────────────────
+  const handleSaveSettings = async () => {
+    setSavingSys(true)
+    try {
+      const changed: Record<string, number> = {}
+      for (const key of Object.keys(sysForm)) {
+        if (sysForm[key] !== sysSettings[key]) {
+          changed[key] = sysForm[key]
+        }
+      }
+      if (Object.keys(changed).length === 0) {
+        setSysEditing(false)
+        return
+      }
+      await api.updateSettings(changed)
+      setSysSettings({ ...sysSettings, ...changed })
+      setSysEditing(false)
+      showMessage('Settings saved. Restart backend to apply capture interval changes.', 'success')
+    } catch (e) {
+      showMessage(e instanceof Error ? e.message : 'Failed to save settings', 'error')
+    } finally {
+      setSavingSys(false)
+    }
+  }
+
   // Helper: count cameras linked to a room
   const camerasInRoom = (roomId: number) =>
     cameras.filter(c => c.room_id === roomId)
@@ -254,7 +288,7 @@ export default function SettingsPage() {
             <p className="text-muted text-sm mt-1">{error}</p>
             <button
               onClick={fetchData}
-              className="mt-4 px-4 py-2 bg-teal text-white rounded-lg text-sm hover:bg-teal/90"
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90"
             >
               Retry
             </button>
@@ -297,7 +331,7 @@ export default function SettingsPage() {
               !showAddRoomForm ? (
                 <button
                   onClick={() => { setShowAddRoomForm(true); setEditingRoomId(null) }}
-                  className="text-xs px-3 py-1.5 bg-teal text-white rounded-lg hover:bg-teal/90 font-medium"
+                  className="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium"
                 >
                   + Add Room
                 </button>
@@ -318,14 +352,14 @@ export default function SettingsPage() {
                 <tbody>
                   {/* Add room form row */}
                   {showAddRoomForm && (
-                    <tr className="border-b border-border bg-teal/5">
+                    <tr className="border-b border-border bg-primary/5">
                       <td className="py-2 pr-3">
                         <input
                           type="text"
                           value={addRoomForm.name}
                           onChange={e => setAddRoomForm(f => ({ ...f, name: e.target.value }))}
                           placeholder="Room name"
-                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
+                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
                         />
                       </td>
                       <td className="py-2 pr-3">
@@ -334,7 +368,7 @@ export default function SettingsPage() {
                           value={addRoomForm.max_capacity}
                           onChange={e => setAddRoomForm(f => ({ ...f, max_capacity: parseInt(e.target.value) || 0 }))}
                           min={1}
-                          className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-teal"
+                          className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-primary"
                         />
                       </td>
                       <td className="py-2 pr-3">
@@ -344,7 +378,7 @@ export default function SettingsPage() {
                           onChange={e => setAddRoomForm(f => ({ ...f, moderate_threshold: e.target.value ? parseInt(e.target.value) : null }))}
                           min={1}
                           placeholder="Auto"
-                          className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-teal"
+                          className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-primary"
                         />
                       </td>
                       <td className="py-2 pr-3 text-muted text-xs">—</td>
@@ -353,7 +387,7 @@ export default function SettingsPage() {
                           <button
                             onClick={handleAddRoom}
                             disabled={savingRoom || !addRoomForm.name.trim()}
-                            className="px-3 py-1 bg-teal text-white text-xs rounded-md hover:bg-teal/90 disabled:opacity-50"
+                            className="px-3 py-1 bg-primary text-white text-xs rounded-md hover:bg-primary/90 disabled:opacity-50"
                           >
                             {savingRoom ? 'Saving...' : 'Save'}
                           </button>
@@ -372,13 +406,13 @@ export default function SettingsPage() {
                   {rooms.map(room => (
                     editingRoomId === room.id ? (
                       /* Edit mode */
-                      <tr key={room.id} className="border-b border-border bg-teal/5">
+                      <tr key={room.id} className="border-b border-border bg-primary/5">
                         <td className="py-2 pr-3">
                           <input
                             type="text"
                             value={editRoomForm.name}
                             onChange={e => setEditRoomForm(f => ({ ...f, name: e.target.value }))}
-                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
+                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
                           />
                         </td>
                         <td className="py-2 pr-3">
@@ -387,7 +421,7 @@ export default function SettingsPage() {
                             value={editRoomForm.max_capacity}
                             onChange={e => setEditRoomForm(f => ({ ...f, max_capacity: parseInt(e.target.value) || 0 }))}
                             min={1}
-                            className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-teal"
+                            className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-primary"
                           />
                         </td>
                         <td className="py-2 pr-3">
@@ -397,7 +431,7 @@ export default function SettingsPage() {
                             onChange={e => setEditRoomForm(f => ({ ...f, moderate_threshold: e.target.value ? parseInt(e.target.value) : null }))}
                             min={1}
                             placeholder="Auto"
-                            className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-teal"
+                            className="w-20 mx-auto block px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text text-center focus:outline-none focus:border-primary"
                           />
                         </td>
                         <td className="py-2 pr-3 text-muted text-xs">
@@ -408,7 +442,7 @@ export default function SettingsPage() {
                             <button
                               onClick={handleEditRoom}
                               disabled={savingRoom || !editRoomForm.name.trim()}
-                              className="px-3 py-1 bg-teal text-white text-xs rounded-md hover:bg-teal/90 disabled:opacity-50"
+                              className="px-3 py-1 bg-primary text-white text-xs rounded-md hover:bg-primary/90 disabled:opacity-50"
                             >
                               {savingRoom ? 'Saving...' : 'Save'}
                             </button>
@@ -456,7 +490,7 @@ export default function SettingsPage() {
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => startEditRoom(room)}
-                                className="px-2 py-1 text-teal text-xs hover:underline"
+                                className="px-2 py-1 text-primary text-xs hover:underline"
                               >
                                 Edit
                               </button>
@@ -479,7 +513,7 @@ export default function SettingsPage() {
                         No rooms configured.{' '}
                         <button
                           onClick={() => setShowAddRoomForm(true)}
-                          className="text-teal hover:underline"
+                          className="text-primary hover:underline"
                         >
                           Add one
                         </button>
@@ -491,6 +525,149 @@ export default function SettingsPage() {
             </div>
           </Panel>
 
+          {/* ── Face Recognition Settings ──────────────── */}
+          <Panel
+            title="Face Recognition"
+            subtitle="Camera capture and analysis settings"
+            action={
+              !sysEditing ? (
+                <button
+                  onClick={() => { setSysEditing(true); setSysForm({ ...sysSettings }) }}
+                  className="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium"
+                >
+                  Edit
+                </button>
+              ) : undefined
+            }
+          >
+            <div className="grid grid-cols-2 gap-6">
+              {/* Capture Interval */}
+              <div>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
+                  Capture Interval
+                </label>
+                {sysEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={sysForm.FR_CAPTURE_INTERVAL ?? 5}
+                      onChange={e => setSysForm(f => ({ ...f, FR_CAPTURE_INTERVAL: parseInt(e.target.value) || 1 }))}
+                      min={1}
+                      max={300}
+                      className="w-24 px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
+                    />
+                    <span className="text-sm text-muted">seconds</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-text">{sysSettings.FR_CAPTURE_INTERVAL ?? 5} seconds</p>
+                )}
+                <p className="text-xs text-muted mt-1">How often each camera captures a frame</p>
+              </div>
+
+              {/* Analyse Every */}
+              <div>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
+                  Analyse Every
+                </label>
+                {sysEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={sysForm.FR_ANALYSE_EVERY ?? 1}
+                      onChange={e => setSysForm(f => ({ ...f, FR_ANALYSE_EVERY: parseInt(e.target.value) || 1 }))}
+                      min={1}
+                      max={20}
+                      className="w-24 px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
+                    />
+                    <span className="text-sm text-muted">captures</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-text">{sysSettings.FR_ANALYSE_EVERY ?? 1} capture{(sysSettings.FR_ANALYSE_EVERY ?? 1) !== 1 ? 's' : ''}</p>
+                )}
+                <p className="text-xs text-muted mt-1">Run face recognition every N captures</p>
+              </div>
+
+              {/* CCTV Start Hour */}
+              <div>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
+                  CCTV Start Hour
+                </label>
+                {sysEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={sysForm.CCTV_START_HOUR ?? 7}
+                      onChange={e => setSysForm(f => ({ ...f, CCTV_START_HOUR: parseInt(e.target.value) || 0 }))}
+                      min={0}
+                      max={23}
+                      className="w-24 px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
+                    />
+                    <span className="text-sm text-muted">:00</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-text">{(sysSettings.CCTV_START_HOUR ?? 7).toString().padStart(2, '0')}:00</p>
+                )}
+                <p className="text-xs text-muted mt-1">Cameras active from this hour</p>
+              </div>
+
+              {/* CCTV End Hour */}
+              <div>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1">
+                  CCTV End Hour
+                </label>
+                {sysEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={sysForm.CCTV_END_HOUR ?? 22}
+                      onChange={e => setSysForm(f => ({ ...f, CCTV_END_HOUR: parseInt(e.target.value) || 0 }))}
+                      min={0}
+                      max={23}
+                      className="w-24 px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
+                    />
+                    <span className="text-sm text-muted">:00</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-text">{(sysSettings.CCTV_END_HOUR ?? 22).toString().padStart(2, '0')}:00</p>
+                )}
+                <p className="text-xs text-muted mt-1">Cameras stop at this hour</p>
+              </div>
+            </div>
+
+            {/* Effective rate summary */}
+            <div className="mt-4 px-3 py-2 bg-surface rounded-lg">
+              <p className="text-xs text-muted">
+                <strong>Effective rate:</strong>{' '}
+                Face recognition runs every{' '}
+                <span className="text-text font-medium">
+                  {(sysEditing ? sysForm : sysSettings).FR_CAPTURE_INTERVAL * (sysEditing ? sysForm : sysSettings).FR_ANALYSE_EVERY}s
+                </span>
+                {' '}per camera ({(sysEditing ? sysForm : sysSettings).FR_CAPTURE_INTERVAL}s capture &times; {(sysEditing ? sysForm : sysSettings).FR_ANALYSE_EVERY} captures)
+              </p>
+            </div>
+
+            {sysEditing && (
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={savingSys}
+                  className="px-4 py-1.5 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
+                >
+                  {savingSys ? 'Saving...' : 'Save Settings'}
+                </button>
+                <button
+                  onClick={() => { setSysEditing(false); setSysForm({ ...sysSettings }) }}
+                  className="px-4 py-1.5 text-muted text-sm hover:text-text"
+                >
+                  Cancel
+                </button>
+                <span className="text-xs text-amber ml-auto">
+                  Changes require backend restart
+                </span>
+              </div>
+            )}
+          </Panel>
+
           {/* ── Camera Configuration ─────────────────── */}
           <Panel
             title="Camera Configuration"
@@ -499,7 +676,7 @@ export default function SettingsPage() {
               !showAddForm ? (
                 <button
                   onClick={() => { setShowAddForm(true); setEditingId(null) }}
-                  className="text-xs px-3 py-1.5 bg-teal text-white rounded-lg hover:bg-teal/90 font-medium"
+                  className="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium"
                 >
                   + Add Camera
                 </button>
@@ -520,14 +697,14 @@ export default function SettingsPage() {
                 <tbody>
                   {/* Add form row */}
                   {showAddForm && (
-                    <tr className="border-b border-border bg-teal/5">
+                    <tr className="border-b border-border bg-primary/5">
                       <td className="py-2 pr-3">
                         <input
                           type="text"
                           value={addForm.name}
                           onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
                           placeholder="Camera name"
-                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
+                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
                         />
                       </td>
                       <td className="py-2 pr-3">
@@ -536,14 +713,14 @@ export default function SettingsPage() {
                           value={addForm.rtsp_url}
                           onChange={e => setAddForm(f => ({ ...f, rtsp_url: e.target.value }))}
                           placeholder="rtsp://..."
-                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal font-mono text-xs"
+                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary font-mono text-xs"
                         />
                       </td>
                       <td className="py-2 pr-3">
                         <select
                           value={addForm.room_id ?? ''}
                           onChange={e => setAddForm(f => ({ ...f, room_id: e.target.value ? parseInt(e.target.value) : null }))}
-                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
+                          className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
                         >
                           <option value="">— No Room —</option>
                           {rooms.map(r => (
@@ -568,7 +745,7 @@ export default function SettingsPage() {
                           <button
                             onClick={handleAddCamera}
                             disabled={saving || !addForm.name.trim()}
-                            className="px-3 py-1 bg-teal text-white text-xs rounded-md hover:bg-teal/90 disabled:opacity-50"
+                            className="px-3 py-1 bg-primary text-white text-xs rounded-md hover:bg-primary/90 disabled:opacity-50"
                           >
                             {saving ? 'Saving...' : 'Save'}
                           </button>
@@ -587,13 +764,13 @@ export default function SettingsPage() {
                   {cameras.map(cam => (
                     editingId === cam.id ? (
                       /* Edit mode */
-                      <tr key={cam.id} className="border-b border-border bg-teal/5">
+                      <tr key={cam.id} className="border-b border-border bg-primary/5">
                         <td className="py-2 pr-3">
                           <input
                             type="text"
                             value={editForm.name}
                             onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
-                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
+                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
                           />
                         </td>
                         <td className="py-2 pr-3">
@@ -601,14 +778,14 @@ export default function SettingsPage() {
                             type="text"
                             value={editForm.rtsp_url}
                             onChange={e => setEditForm(f => ({ ...f, rtsp_url: e.target.value }))}
-                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal font-mono text-xs"
+                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary font-mono text-xs"
                           />
                         </td>
                         <td className="py-2 pr-3">
                           <select
                             value={editForm.room_id ?? ''}
                             onChange={e => setEditForm(f => ({ ...f, room_id: e.target.value ? parseInt(e.target.value) : null }))}
-                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-teal"
+                            className="w-full px-2 py-1.5 text-sm border border-border rounded-md bg-panel text-text focus:outline-none focus:border-primary"
                           >
                             <option value="">— No Room —</option>
                             {rooms.map(r => (
@@ -633,7 +810,7 @@ export default function SettingsPage() {
                             <button
                               onClick={handleEditCamera}
                               disabled={saving || !editForm.name.trim()}
-                              className="px-3 py-1 bg-teal text-white text-xs rounded-md hover:bg-teal/90 disabled:opacity-50"
+                              className="px-3 py-1 bg-primary text-white text-xs rounded-md hover:bg-primary/90 disabled:opacity-50"
                             >
                               {saving ? 'Saving...' : 'Save'}
                             </button>
@@ -660,7 +837,7 @@ export default function SettingsPage() {
                               </code>
                               <button
                                 onClick={() => toggleUrl(cam.id)}
-                                className="text-xs text-teal hover:underline flex-shrink-0"
+                                className="text-xs text-primary hover:underline flex-shrink-0"
                               >
                                 {showUrls.has(cam.id) ? 'Hide' : 'Show'}
                               </button>
@@ -706,7 +883,7 @@ export default function SettingsPage() {
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => startEdit(cam)}
-                                className="px-2 py-1 text-teal text-xs hover:underline"
+                                className="px-2 py-1 text-primary text-xs hover:underline"
                               >
                                 Edit
                               </button>
@@ -729,7 +906,7 @@ export default function SettingsPage() {
                         No cameras configured.{' '}
                         <button
                           onClick={() => setShowAddForm(true)}
-                          className="text-teal hover:underline"
+                          className="text-primary hover:underline"
                         >
                           Add one
                         </button>
@@ -784,7 +961,7 @@ export default function SettingsPage() {
             </div>
             <p className="text-xs text-muted mt-2">
               Members can be managed from the{' '}
-              <a href="/members" className="text-teal hover:underline">Members</a> page.
+              <a href="/members" className="text-primary hover:underline">Members</a> page.
             </p>
           </Panel>
         </main>

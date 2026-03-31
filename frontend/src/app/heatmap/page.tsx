@@ -112,7 +112,7 @@ export default function HeatmapPage() {
                 return (
                   <div
                     key={room.id}
-                    className={`${colors.bg} rounded-xl p-5 border border-border transition-all hover:shadow-md`}
+                    className={`${colors.bg} rounded-[14px] p-5 border border-border transition-all hover:shadow-md`}
                   >
                     {/* Room name */}
                     <div className="text-sm font-semibold text-text truncate">{room.name}</div>

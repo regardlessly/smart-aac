@@ -13,7 +13,7 @@ export default memo(function RoomHeatmap({ rooms }: Props) {
       title="Room Occupancy Heatmap"
       subtitle={`${rooms.filter(r => r.occupancy > 0).length} of ${rooms.length} rooms active`}
       action={
-        <a href="/heatmap" className="text-xs text-teal hover:underline">
+        <a href="/heatmap" className="text-xs text-primary hover:underline">
           Full View
         </a>
       }

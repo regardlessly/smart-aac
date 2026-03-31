@@ -27,6 +27,26 @@ def create_app(config_name=None):
     from .api import register_blueprints
     register_blueprints(app)
 
+    # Load persisted settings from DB (overrides config.py defaults)
+    with app.app_context():
+        try:
+            db.session.execute(db.text(
+                'CREATE TABLE IF NOT EXISTS system_settings '
+                '(key TEXT PRIMARY KEY, value TEXT NOT NULL)'
+            ))
+            db.session.commit()
+            rows = db.session.execute(
+                db.text('SELECT key, value FROM system_settings')
+            ).fetchall()
+            for key, value in rows:
+                if key in app.config:
+                    try:
+                        app.config[key] = type(app.config[key])(value)
+                    except (ValueError, TypeError):
+                        pass
+        except Exception:
+            pass  # Table may not exist on first run
+
     # CLI commands
     @app.cli.command('seed')
     @click.option('--force', is_flag=True, help='Drop and recreate all data')

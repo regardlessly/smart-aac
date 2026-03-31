@@ -161,12 +161,12 @@ export default function MembersPage() {
               placeholder="Search members..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text w-64 focus:outline-none focus:ring-2 focus:ring-teal/30"
+              className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text w-64 focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="px-4 py-1.5 rounded-lg bg-teal text-white text-sm font-medium hover:bg-teal-dark transition-colors disabled:opacity-50"
+              className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
               {syncing ? 'Syncing...' : 'Sync from Odoo'}
             </button>
@@ -259,18 +259,18 @@ export default function MembersPage() {
                             {m.senior_id ? (
                               <Link
                                 href={`/members/${m.senior_id}`}
-                                className="flex items-center gap-2 hover:text-teal transition-colors"
+                                className="flex items-center gap-2 hover:text-primary transition-colors"
                               >
-                                <span className="w-8 h-8 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                                <span className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
                                   {m.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
                                 </span>
-                                <span className="font-medium text-text hover:text-teal">
+                                <span className="font-medium text-text hover:text-primary">
                                   {m.name}
                                 </span>
                               </Link>
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span className="w-8 h-8 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                                <span className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
                                   {m.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
                                 </span>
                                 <span className="font-medium text-text">{m.name}</span>
@@ -305,7 +305,7 @@ export default function MembersPage() {
                             {m.senior_id && (
                               <Link
                                 href={`/members/${m.senior_id}`}
-                                className="text-muted hover:text-teal transition-colors"
+                                className="text-muted hover:text-primary transition-colors"
                               >
                                 →
                               </Link>
@@ -344,7 +344,7 @@ export default function MembersPage() {
                               onClick={() => setPage(p)}
                               className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                                 page === p
-                                  ? 'bg-teal text-white'
+                                  ? 'bg-primary text-white'
                                   : 'text-text hover:bg-surface'
                               }`}
                             >

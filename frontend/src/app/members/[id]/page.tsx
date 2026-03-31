@@ -626,7 +626,7 @@ export default function MemberDetailPage() {
           <div>
             <Link
               href="/members"
-              className="text-sm text-muted hover:text-teal transition-colors inline-flex items-center gap-1 mb-3"
+              className="text-sm text-muted hover:text-primary transition-colors inline-flex items-center gap-1 mb-3"
             >
               ← Back to Members
             </Link>
@@ -638,7 +638,7 @@ export default function MemberDetailPage() {
               </div>
             ) : summary ? (
               <div className="flex items-center gap-3">
-                <span className="w-12 h-12 rounded-full bg-teal/10 text-teal flex items-center justify-center text-lg font-bold shrink-0">
+                <span className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-bold shrink-0">
                   {summary.senior_name
                     .split(' ')
                     .map((w) => w[0])
@@ -663,8 +663,8 @@ export default function MemberDetailPage() {
                 label="Total Visits"
                 value={`${summary.total_visits} days`}
                 icon="📅"
-                color="text-teal"
-                bgColor="bg-teal/10"
+                color="text-primary"
+                bgColor="bg-primary/10"
               />
               <StatCard
                 label="Avg Duration"
@@ -705,7 +705,7 @@ export default function MemberDetailPage() {
             <button
               onClick={exportPDF}
               disabled={exporting || !summary}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-teal text-white hover:bg-teal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap shrink-0"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap shrink-0"
             >
               {exporting ? (
                 <>
@@ -767,7 +767,7 @@ function WeeklyTab({
           type="month"
           value={month}
           onChange={(e) => onMonthChange(e.target.value)}
-          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-teal/30"
+          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </div>
 
@@ -795,7 +795,7 @@ function WeeklyTab({
                       <td className="py-2.5 pr-4 text-muted">{w.start} – {w.end}</td>
                       <td className="py-2.5 pr-4 text-center">
                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${
-                          w.days_visited > 0 ? 'bg-teal/10 text-teal' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
+                          w.days_visited > 0 ? 'bg-primary/10 text-primary' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'
                         }`}>
                           {w.days_visited}
                         </span>
@@ -807,7 +807,7 @@ function WeeklyTab({
                     <td className="py-2.5 pr-4 font-bold text-text">Total</td>
                     <td className="py-2.5 pr-4"></td>
                     <td className="py-2.5 pr-4 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold bg-teal text-white">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold bg-primary text-white">
                         {data.total_days}
                       </span>
                     </td>
@@ -826,8 +826,8 @@ function WeeklyTab({
                   return (
                     <div key={w.week} className="flex-1 flex flex-col items-center gap-1">
                       <span className="text-xs font-medium text-text">{w.days_visited}</span>
-                      <div className="w-full bg-teal/20 rounded-t" style={{ height: `${Math.max(pct, 4)}%` }}>
-                        <div className="w-full bg-teal rounded-t h-full" style={{ opacity: w.days_visited > 0 ? 1 : 0.2 }} />
+                      <div className="w-full bg-primary/20 rounded-t" style={{ height: `${Math.max(pct, 4)}%` }}>
+                        <div className="w-full bg-primary rounded-t h-full" style={{ opacity: w.days_visited > 0 ? 1 : 0.2 }} />
                       </div>
                       <span className="text-[10px] text-muted">{w.label}</span>
                     </div>
@@ -861,7 +861,7 @@ function DurationTab({
           type="date"
           value={date}
           onChange={(e) => onDateChange(e.target.value)}
-          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-teal/30"
+          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </div>
 
@@ -888,14 +888,14 @@ function DurationTab({
                     <tr key={e.room_id} className="border-b border-border/50 last:border-0">
                       <td className="py-2.5 pr-4 font-medium text-text">{e.room_name}</td>
                       <td className="py-2.5 pr-4">
-                        <span className="text-teal font-semibold">{e.duration_formatted}</span>
+                        <span className="text-primary font-semibold">{e.duration_formatted}</span>
                       </td>
                     </tr>
                   ))}
                   <tr className="border-t-2 border-border">
                     <td className="py-2.5 pr-4 font-bold text-text">Total</td>
                     <td className="py-2.5 pr-4">
-                      <span className="text-teal font-bold">{data.total_duration}</span>
+                      <span className="text-primary font-bold">{data.total_duration}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -912,7 +912,7 @@ function DurationTab({
                     <div key={e.room_id} className="flex items-center gap-3">
                       <span className="text-xs text-muted w-28 truncate">{e.room_name}</span>
                       <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-teal rounded-full" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-xs font-medium text-text w-16 text-right">{e.duration_formatted}</span>
                     </div>
@@ -967,9 +967,9 @@ function CalendarTab({
   const getIntensityClass = (seconds: number, maxSecs: number) => {
     if (seconds === 0) return 'bg-gray-100 dark:bg-gray-800'
     const ratio = seconds / maxSecs
-    if (ratio < 0.25) return 'bg-teal/20'
-    if (ratio < 0.5) return 'bg-teal/40'
-    if (ratio < 0.75) return 'bg-teal/60'
+    if (ratio < 0.25) return 'bg-primary/20'
+    if (ratio < 0.5) return 'bg-primary/40'
+    if (ratio < 0.75) return 'bg-primary/60'
     return 'bg-teal'
   }
 
@@ -987,7 +987,7 @@ function CalendarTab({
           type="month"
           value={month}
           onChange={(e) => onMonthChange(e.target.value)}
-          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-teal/30"
+          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </div>
 
@@ -1023,7 +1023,7 @@ function CalendarTab({
                     <>
                       <span className={cell.seconds > 0 && cell.seconds / calendarGrid.maxSecs >= 0.5 ? 'text-white' : 'text-text'}>{cell.day}</span>
                       {cell.seconds > 0 && (
-                        <span className={`text-[9px] ${cell.seconds / calendarGrid.maxSecs >= 0.5 ? 'text-white/80' : 'text-teal'}`}>
+                        <span className={`text-[9px] ${cell.seconds / calendarGrid.maxSecs >= 0.5 ? 'text-white/80' : 'text-primary'}`}>
                           {formatHours(cell.seconds)}
                         </span>
                       )}
@@ -1038,10 +1038,10 @@ function CalendarTab({
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-muted">Less</span>
                 <div className="w-4 h-4 rounded bg-gray-100 dark:bg-gray-800" />
-                <div className="w-4 h-4 rounded bg-teal/20" />
-                <div className="w-4 h-4 rounded bg-teal/40" />
-                <div className="w-4 h-4 rounded bg-teal/60" />
-                <div className="w-4 h-4 rounded bg-teal" />
+                <div className="w-4 h-4 rounded bg-primary/20" />
+                <div className="w-4 h-4 rounded bg-primary/40" />
+                <div className="w-4 h-4 rounded bg-primary/60" />
+                <div className="w-4 h-4 rounded bg-primary" />
                 <span className="text-[10px] text-muted">More</span>
               </div>
               <div className="text-xs text-muted">
@@ -1077,7 +1077,7 @@ function FavouriteRoomsTab({
           type="month"
           value={month}
           onChange={(e) => onMonthChange(e.target.value)}
-          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-teal/30"
+          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </div>
 
@@ -1177,7 +1177,7 @@ function TrendTab({
         <select
           value={months}
           onChange={(e) => onMonthsChange(Number(e.target.value))}
-          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-teal/30"
+          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value={1}>Last 1 month</option>
           <option value={2}>Last 2 months</option>
@@ -1277,7 +1277,7 @@ function PeersTab({
           type="month"
           value={month}
           onChange={(e) => onMonthChange(e.target.value)}
-          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-teal/30"
+          className="px-3 py-1.5 rounded-lg border border-border bg-panel text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </div>
 
@@ -1317,13 +1317,13 @@ function PeersTab({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium text-text truncate">{p.senior_name}</span>
-                      <span className="text-xs font-bold text-teal ml-2 shrink-0">
+                      <span className="text-xs font-bold text-primary ml-2 shrink-0">
                         {p.co_occurrence_count} times
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-teal/50 rounded-full" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-primary/50 rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-[10px] text-muted shrink-0 truncate max-w-[160px]">
                         {p.common_rooms.join(', ')}

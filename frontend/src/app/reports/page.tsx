@@ -83,7 +83,7 @@ export default function ReportsPage() {
         <main className="p-6 space-y-6">
           {/* Report Tabs */}
           <div className="flex items-center gap-1 border-b border-border">
-            <span className="px-4 py-2.5 text-sm font-semibold text-teal border-b-2 border-teal">
+            <span className="px-4 py-2.5 text-sm font-semibold text-primary border-b-2 border-primary">
               Room Occupancy
             </span>
             <a
@@ -171,8 +171,8 @@ export default function ReportsPage() {
                     : undefined
                 }
                 icon="📈"
-                color="text-teal"
-                bgColor="bg-teal/10"
+                color="text-primary"
+                bgColor="bg-primary/10"
               />
               <StatCard
                 label="Busiest Room"
