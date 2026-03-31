@@ -31,34 +31,22 @@ def run_seed(force=False):
     # ── Cameras ──────────────────────────────────────────────────
     cameras = [
         Camera(
-            name='CAM 1 — Hall',
+            name='CAM 1',
             rtsp_url='rtsp://admin:Admin12345@192.168.88.14:554/'
                      'cam/realmonitor?channel=3&subtype=0',
-            channel=3,
-            location='Multi-purpose Hall',
             enabled=True,
         ),
         Camera(
-            name='CAM 2 — Room A',
+            name='CAM 2',
             rtsp_url='rtsp://admin:Admin12345@192.168.88.14:554/'
                      'cam/realmonitor?channel=2&subtype=0',
-            channel=2,
-            location='Activity Room A',
-            enabled=False,
+            enabled=True,
         ),
         Camera(
-            name='CAM 3 — Room B',
-            rtsp_url=None,
-            channel=None,
-            location='Activity Room B',
-            enabled=False,
-        ),
-        Camera(
-            name='CAM 4 — Lobby',
-            rtsp_url=None,
-            channel=None,
-            location='Lobby',
-            enabled=False,
+            name='CAM 3',
+            rtsp_url='rtsp://admin:Admin12345@192.168.88.14:554/'
+                     'cam/realmonitor?channel=1&subtype=0',
+            enabled=True,
         ),
     ]
     db.session.add_all(cameras)
@@ -66,26 +54,9 @@ def run_seed(force=False):
 
     # ── Rooms ────────────────────────────────────────────────────
     rooms = [
-        Room(name='Multi-purpose Hall',
-             max_capacity=15, current_occupancy=12),
-        Room(name='Activity Room A',
-             max_capacity=10, current_occupancy=6),
-        Room(name='Activity Room B',
-             max_capacity=10, current_occupancy=3),
-        Room(name='Kitchen Area',
-             max_capacity=6, current_occupancy=2),
-        Room(name='Reading Corner',
-             max_capacity=8, current_occupancy=0),
-        Room(name='Quiet Room',
-             max_capacity=4, current_occupancy=0),
+        Room(name='Room A', max_capacity=20, current_occupancy=0),
+        Room(name='Room B', max_capacity=20, current_occupancy=0),
     ]
-    db.session.add_all(rooms)
-    db.session.flush()
-
-    # Link cameras to rooms
-    cameras[0].room_id = rooms[0].id  # Hall
-    cameras[1].room_id = rooms[1].id  # Room A
-    cameras[2].room_id = rooms[2].id  # Room B
     db.session.add_all(rooms)
     db.session.flush()
 
@@ -124,21 +95,17 @@ def run_seed(force=False):
     db.session.add_all(seniors)
     db.session.flush()
 
-    # ── Senior Presences (23 present today) ──────────────────────
-    # Distribute across rooms matching wireframe heatmap
+    # ── Senior Presences ────────────────────────────────────────
+    # Distribute across rooms
     presence_assignments = [
-        # Multi-purpose Hall: 12 seniors
+        # Room A: 12 seniors
         (0, 0, '08:45'), (2, 0, '09:10'), (5, 0, '09:15'),
         (8, 0, '09:20'), (9, 0, '09:25'), (10, 0, '09:30'),
         (11, 0, '09:35'), (12, 0, '09:40'), (13, 0, '09:45'),
         (14, 0, '09:50'), (15, 0, '10:00'), (16, 0, '10:05'),
-        # Activity Room A: 6 seniors
+        # Room B: 6 seniors
         (1, 1, '09:02'), (6, 1, '09:08'), (17, 1, '09:12'),
         (18, 1, '09:18'), (19, 1, '09:22'), (20, 1, '09:28'),
-        # Activity Room B: 3 seniors
-        (3, 2, '09:48'), (7, 2, '09:55'), (21, 2, '10:02'),
-        # Kitchen Area: 2 seniors
-        (4, 3, '10:05'), (22, 3, '10:10'),
     ]
 
     presences = []
@@ -155,26 +122,6 @@ def run_seed(force=False):
             is_current=True,
         )
         presences.append(p)
-
-    # 2 unidentified presences (strangers)
-    presences.append(SeniorPresence(
-        senior_id=None,
-        room_id=rooms[0].id,  # Multi-purpose Hall
-        camera_id=cameras[0].id,
-        arrived_at=_today_at(9, 35),
-        last_seen_at=_today_at(10, 30),
-        status='unidentified',
-        is_current=True,
-    ))
-    presences.append(SeniorPresence(
-        senior_id=None,
-        room_id=rooms[3].id,  # Lobby via CAM 4
-        camera_id=cameras[3].id,
-        arrived_at=_today_at(10, 15),
-        last_seen_at=_today_at(10, 30),
-        status='unidentified',
-        is_current=True,
-    ))
 
     db.session.add_all(presences)
     db.session.flush()
@@ -207,7 +154,7 @@ def run_seed(force=False):
         ),
         Activity(
             name='Cooking Class',
-            room_id=rooms[3].id,
+            room_id=rooms[1].id,
             scheduled_time=_today_at(14, 0),
             end_time=_today_at(15, 30),
             status='upcoming',
@@ -238,10 +185,10 @@ def run_seed(force=False):
         ),
         Alert(
             type='warning',
-            title='Unidentified Person in Lobby',
+            title='Unidentified Person Detected',
             description='Person entered with a group but was not '
                         'recognised by facial system.',
-            camera_id=cameras[3].id,
+            camera_id=cameras[1].id,
             created_at=now - timedelta(minutes=18),
         ),
         Alert(
@@ -323,12 +270,8 @@ def run_seed(force=False):
     for cam in cameras:
         snap = CCTVSnapshot(
             camera_id=cam.id,
-            identified_count=10 if cam.id == cameras[0].id else (
-                6 if cam.id == cameras[1].id else (
-                    3 if cam.id == cameras[2].id else 0)),
-            unidentified_count=2 if cam.id == cameras[0].id else (
-                0 if cam.id == cameras[1].id else (
-                    0 if cam.id == cameras[2].id else 1)),
+            identified_count=0,
+            unidentified_count=0,
             snapshot_b64=None,
             timestamp=now - timedelta(minutes=3),
         )

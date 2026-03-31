@@ -29,6 +29,7 @@ export default function LogsPage() {
   const [lines, setLines] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [autoScroll, setAutoScroll] = useState(true)
   const [cameraStatus, setCameraStatus] = useState<CameraStatus | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const { connected } = useSSE(() => {})
@@ -62,10 +63,10 @@ export default function LogsPage() {
 
   // Auto-scroll to bottom on new lines
   useEffect(() => {
-    if (autoRefresh) {
+    if (autoRefresh && autoScroll) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [lines, autoRefresh])
+  }, [lines, autoRefresh, autoScroll])
 
   // Auto-refresh every 3s
   useEffect(() => {
@@ -98,6 +99,16 @@ export default function LogsPage() {
               <p className="text-sm text-muted mt-0.5">Real-time backend and frontend logs</p>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setAutoScroll(a => !a)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  autoScroll
+                    ? 'bg-sky-600 text-white border-sky-600'
+                    : 'bg-white text-text border-border hover:bg-surface'
+                }`}
+              >
+                {autoScroll ? '↓ Auto-scroll' : '↓ Scroll off'}
+              </button>
               <button
                 onClick={() => setAutoRefresh(a => !a)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
