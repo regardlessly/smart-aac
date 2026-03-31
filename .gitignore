@@ -28,3 +28,10 @@ Thumbs.db
 # Database
 pgdata/
 *.db
+
+# Embedding cache & model outputs
+data/known_faces/.embedding_cache.npz
+data/output/
+
+# Logs
+/tmp/smart-aac-*.log

@@ -8,13 +8,11 @@ interface Props {
 
 const EVENT_ICONS: Record<string, string> = {
   check_in: '📋',
-  locker_open: '🔓',
   activity_register: '📝',
 }
 
 const EVENT_LABELS: Record<string, string> = {
   check_in: 'Checked in',
-  locker_open: 'Opened locker',
   activity_register: 'Registered for',
 }
 
@@ -47,7 +45,6 @@ export default memo(function KioskLog({ events }: Props) {
               <span className="text-sm text-muted ml-1">
                 {EVENT_LABELS[evt.event_type] || evt.event_type}
                 {evt.activity_name && ` "${evt.activity_name}"`}
-                {evt.locker_number && ` ${evt.locker_number}`}
               </span>
             </div>
             <span className="text-xs text-muted shrink-0 font-mono">{formatTime(evt.timestamp)}</span>

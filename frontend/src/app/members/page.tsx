@@ -9,6 +9,8 @@ import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
 import type { RosterMember, SSEEvent } from '@/lib/types'
 
+const PAGE_SIZE = 25
+
 function formatTimeAgo(isoStr: string): string {
   const d = new Date(isoStr)
   const now = new Date()
@@ -27,6 +29,7 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
 
   // Sync state
   const [syncing, setSyncing] = useState(false)
@@ -62,7 +65,6 @@ export default function MembersPage() {
   const throttleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleSSE = useCallback((event: SSEEvent) => {
-    // Detection events — refresh roster (throttled)
     if (event.type === 'detection') {
       if (!throttleRef.current) {
         fetchDataRef.current()
@@ -71,7 +73,6 @@ export default function MembersPage() {
         }, 10000)
       }
     }
-    // Sync progress events
     if (event.type === 'sync_progress') {
       setSyncProgress({
         current: event.current as number,
@@ -79,7 +80,6 @@ export default function MembersPage() {
         name: event.name as string,
       })
     }
-    // Sync complete events
     if (event.type === 'sync_complete') {
       setSyncing(false)
       setSyncProgress(null)
@@ -94,7 +94,6 @@ export default function MembersPage() {
 
   const { connected } = useSSE(handleSSE)
 
-  // Fallback polling when SSE disconnected (30s)
   useEffect(() => {
     if (connected) return
     const interval = setInterval(fetchData, 30000)
@@ -111,9 +110,18 @@ export default function MembersPage() {
     }
   }
 
-  const filtered = members.filter((m) =>
-    m.name.toLowerCase().includes(search.toLowerCase()),
-  )
+  const filtered = useMemo(() =>
+    members.filter((m) =>
+      m.name.toLowerCase().includes(search.toLowerCase()),
+    ),
+  [members, search])
+
+  // Reset to page 1 when search changes
+  useEffect(() => { setPage(1) }, [search])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const startIndex = (page - 1) * PAGE_SIZE
 
   const { activeCount, inactiveCount } = useMemo(() => ({
     activeCount: members.filter(m => m.status === 'active').length,
@@ -136,7 +144,7 @@ export default function MembersPage() {
             </div>
             <div className="flex gap-3 text-sm">
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="w-2 h-2 rounded-full bg-green" />
                 <span className="text-muted">{activeCount} active</span>
               </span>
               <span className="flex items-center gap-1.5">
@@ -163,7 +171,7 @@ export default function MembersPage() {
               {syncing ? 'Syncing...' : 'Sync from Odoo'}
             </button>
             <span className="text-sm text-muted ml-auto">
-              {members.length} members total
+              {filtered.length} member{filtered.length !== 1 ? 's' : ''}{search ? ' found' : ' total'}
             </span>
           </div>
 
@@ -176,7 +184,7 @@ export default function MembersPage() {
                   {syncProgress.current}/{syncProgress.total}
                 </span>
               </div>
-              <div className="h-2 bg-white/60 dark:bg-white/10 rounded-full overflow-hidden">
+              <div className="h-2 bg-white/60 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-sky rounded-full transition-all"
                   style={{
@@ -214,7 +222,7 @@ export default function MembersPage() {
           {/* Members table */}
           <Panel
             title="All Members"
-            subtitle={`${filtered.length} member${filtered.length !== 1 ? 's' : ''} found`}
+            subtitle={`Showing ${startIndex + 1}–${Math.min(startIndex + PAGE_SIZE, filtered.length)} of ${filtered.length}`}
           >
             {loading ? (
               <p className="text-sm text-muted text-center py-8">Loading members...</p>
@@ -227,86 +235,134 @@ export default function MembersPage() {
                   : "No members registered. Click 'Sync from Odoo' to import."}
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-muted">
-                      <th className="pb-2 pr-4 font-medium w-10">#</th>
-                      <th className="pb-2 pr-4 font-medium">Name</th>
-                      <th className="pb-2 pr-4 font-medium">Status</th>
-                      <th className="pb-2 pr-4 font-medium">Location</th>
-                      <th className="pb-2 pr-4 font-medium">Last Seen</th>
-                      <th className="pb-2 font-medium w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((m, i) => (
-                      <tr
-                        key={m.name}
-                        className="border-b border-border/50 last:border-0 hover:bg-surface/50 transition-colors"
-                      >
-                        <td className="py-2.5 pr-4 text-muted">{i + 1}</td>
-                        <td className="py-2.5 pr-4">
-                          {m.senior_id ? (
-                            <Link
-                              href={`/members/${m.senior_id}`}
-                              className="flex items-center gap-2 hover:text-teal transition-colors"
-                            >
-                              <span className="w-8 h-8 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
-                                {m.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
-                              </span>
-                              <span className="font-medium text-text hover:text-teal">
-                                {m.name}
-                              </span>
-                            </Link>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="w-8 h-8 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
-                                {m.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
-                              </span>
-                              <span className="font-medium text-text">{m.name}</span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-2.5 pr-4">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-                              m.status === 'active'
-                                ? 'bg-green-light text-green'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                m.status === 'active'
-                                  ? 'bg-green'
-                                  : 'bg-gray-400'
-                              }`}
-                            />
-                            {m.status === 'active' ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 pr-4 text-muted">
-                          {m.location || '—'}
-                        </td>
-                        <td className="py-2.5 pr-4 text-muted">
-                          {m.last_seen ? formatTimeAgo(m.last_seen) : '—'}
-                        </td>
-                        <td className="py-2.5">
-                          {m.senior_id && (
-                            <Link
-                              href={`/members/${m.senior_id}`}
-                              className="text-muted hover:text-teal transition-colors"
-                            >
-                              →
-                            </Link>
-                          )}
-                        </td>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted">
+                        <th className="pb-2 pr-4 font-medium w-10">#</th>
+                        <th className="pb-2 pr-4 font-medium">Name</th>
+                        <th className="pb-2 pr-4 font-medium">Status</th>
+                        <th className="pb-2 pr-4 font-medium">Location</th>
+                        <th className="pb-2 pr-4 font-medium">Last Seen</th>
+                        <th className="pb-2 font-medium w-10"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {paginated.map((m, i) => (
+                        <tr
+                          key={m.senior_id ?? m.name}
+                          className="border-b border-border/50 last:border-0 hover:bg-surface/50 transition-colors"
+                        >
+                          <td className="py-2.5 pr-4 text-muted">{startIndex + i + 1}</td>
+                          <td className="py-2.5 pr-4">
+                            {m.senior_id ? (
+                              <Link
+                                href={`/members/${m.senior_id}`}
+                                className="flex items-center gap-2 hover:text-teal transition-colors"
+                              >
+                                <span className="w-8 h-8 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                                  {m.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                                </span>
+                                <span className="font-medium text-text hover:text-teal">
+                                  {m.name}
+                                </span>
+                              </Link>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="w-8 h-8 rounded-full bg-teal/10 text-teal flex items-center justify-center text-xs font-bold shrink-0">
+                                  {m.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                                </span>
+                                <span className="font-medium text-text">{m.name}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                m.status === 'active'
+                                  ? 'bg-green-light text-green'
+                                  : 'bg-gray-100 text-gray-500'
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  m.status === 'active'
+                                    ? 'bg-green'
+                                    : 'bg-gray-400'
+                                }`}
+                              />
+                              {m.status === 'active' ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 pr-4 text-muted">
+                            {m.location || '—'}
+                          </td>
+                          <td className="py-2.5 pr-4 text-muted">
+                            {m.last_seen ? formatTimeAgo(m.last_seen) : '—'}
+                          </td>
+                          <td className="py-2.5">
+                            {m.senior_id && (
+                              <Link
+                                href={`/members/${m.senior_id}`}
+                                className="text-muted hover:text-teal transition-colors"
+                              >
+                                →
+                              </Link>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="px-3 py-1.5 rounded-lg border border-border text-sm text-text hover:bg-surface transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                        .reduce<(number | 'ellipsis')[]>((acc, p, i, arr) => {
+                          if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('ellipsis')
+                          acc.push(p)
+                          return acc
+                        }, [])
+                        .map((p, i) =>
+                          p === 'ellipsis' ? (
+                            <span key={`e${i}`} className="px-2 text-muted text-sm">…</span>
+                          ) : (
+                            <button
+                              key={p}
+                              onClick={() => setPage(p)}
+                              className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                                page === p
+                                  ? 'bg-teal text-white'
+                                  : 'text-text hover:bg-surface'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          )
+                        )}
+                    </div>
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="px-3 py-1.5 rounded-lg border border-border text-sm text-text hover:bg-surface transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </Panel>
         </main>

@@ -24,4 +24,4 @@ if __name__ == '__main__':
     print(f'Network: http://{local_ip}:5001')
     print('=' * 60)
     app.run(host='0.0.0.0', port=5001, threaded=True,
-            debug=True, use_reloader=False)
+            debug=False)

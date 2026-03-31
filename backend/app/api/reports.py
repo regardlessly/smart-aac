@@ -81,6 +81,173 @@ def _aggregate_presences_by_room(presences, day_start, day_end):
     return room_agg
 
 
+# ── Daily Attendance Report ──────────────────────────────────────
+
+
+@bp.route('/api/reports/daily-attendance')
+@login_required
+def daily_attendance():
+    """List all seniors detected on a given day with first/last seen, rooms, duration.
+
+    Uses DailyPresenceSummary for past dates, raw SeniorPresence for today.
+
+    Query params:
+        date – 'YYYY-MM-DD' (default: today)
+    """
+    date_str = request.args.get('date')
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            target_date = date.today()
+    else:
+        target_date = date.today()
+
+    cctv_start = current_app.config.get('CCTV_START_HOUR', 7)
+    cctv_end = current_app.config.get('CCTV_END_HOUR', 22)
+    day_start = _local_hour_to_utc(target_date, cctv_start)
+    day_end = _local_hour_to_utc(target_date, cctv_end)
+
+    use_raw = (target_date == date.today())
+
+    # Check if we have summaries for this date
+    if not use_raw:
+        summary_count = DailyPresenceSummary.query.filter(
+            DailyPresenceSummary.date == target_date,
+        ).count()
+        if summary_count == 0:
+            use_raw = True  # No summaries, fall back to raw
+
+    attendees = []
+
+    if use_raw:
+        # Query raw presences for the day
+        presences = SeniorPresence.query.outerjoin(
+            Senior, SeniorPresence.senior_id == Senior.id,
+        ).outerjoin(
+            Room, SeniorPresence.room_id == Room.id,
+        ).filter(
+            SeniorPresence.status == 'identified',
+            SeniorPresence.senior_id.isnot(None),
+            SeniorPresence.arrived_at < day_end,
+            SeniorPresence.last_seen_at >= day_start,
+        ).with_entities(
+            SeniorPresence.senior_id,
+            Senior.name.label('senior_name'),
+            SeniorPresence.room_id,
+            Room.name.label('room_name'),
+            SeniorPresence.arrived_at,
+            SeniorPresence.last_seen_at,
+            SeniorPresence.is_current,
+        ).all()
+
+        # Aggregate by senior
+        senior_agg: dict[int, dict] = {}
+        for sid, sname, rid, rname, arrived, last_seen, is_current in presences:
+            if not arrived or not last_seen:
+                continue
+            if arrived < day_start:
+                continue
+            eff_start = max(arrived, day_start)
+            eff_end = min(last_seen, day_end)
+            if eff_end <= eff_start:
+                continue
+            if sid not in senior_agg:
+                senior_agg[sid] = {
+                    'senior_id': sid,
+                    'senior_name': sname,
+                    'first_seen': eff_start,
+                    'last_seen': eff_end,
+                    'rooms': set(),
+                    'intervals': [],
+                    'is_current': False,
+                }
+            agg = senior_agg[sid]
+            agg['first_seen'] = min(agg['first_seen'], eff_start)
+            agg['last_seen'] = max(agg['last_seen'], eff_end)
+            if rname:
+                agg['rooms'].add(rname)
+            agg['intervals'].append((eff_start, eff_end))
+            if is_current:
+                agg['is_current'] = True
+
+        for sid, agg in senior_agg.items():
+            merged = _merge_intervals(agg['intervals'])
+            total_secs = int(sum((e - s).total_seconds() for s, e in merged))
+            attendees.append({
+                'senior_id': agg['senior_id'],
+                'senior_name': agg['senior_name'],
+                'first_seen': agg['first_seen'].strftime('%I:%M %p'),
+                'last_seen': agg['last_seen'].strftime('%I:%M %p'),
+                'rooms': sorted(agg['rooms']),
+                'duration_seconds': total_secs,
+                'duration_formatted': (f'{total_secs // 3600}h '
+                                       f'{(total_secs % 3600) // 60}m'),
+                'session_count': len(merged),
+                'status': 'present' if agg['is_current'] else 'departed',
+            })
+    else:
+        # Use DailyPresenceSummary for past dates
+        rows = db.session.query(
+            DailyPresenceSummary.senior_id,
+            Senior.name.label('senior_name'),
+            func.sum(DailyPresenceSummary.total_seconds).label('total_seconds'),
+            func.sum(DailyPresenceSummary.session_count).label('sessions'),
+            func.min(DailyPresenceSummary.first_seen).label('first_seen'),
+            func.max(DailyPresenceSummary.last_seen).label('last_seen'),
+            func.group_concat(Room.name).label('room_names'),
+        ).join(
+            Senior, DailyPresenceSummary.senior_id == Senior.id,
+        ).outerjoin(
+            Room, DailyPresenceSummary.room_id == Room.id,
+        ).filter(
+            DailyPresenceSummary.date == target_date,
+        ).group_by(
+            DailyPresenceSummary.senior_id, Senior.name,
+        ).all()
+
+        for sid, sname, secs, sessions, first_s, last_s, rnames in rows:
+            total_secs = int(secs or 0)
+            rooms_list = sorted(set(
+                r for r in (rnames or '').split(',') if r))
+            attendees.append({
+                'senior_id': sid,
+                'senior_name': sname,
+                'first_seen': (first_s.strftime('%I:%M %p')
+                               if first_s else None),
+                'last_seen': (last_s.strftime('%I:%M %p')
+                              if last_s else None),
+                'rooms': rooms_list,
+                'duration_seconds': total_secs,
+                'duration_formatted': (f'{total_secs // 3600}h '
+                                       f'{(total_secs % 3600) // 60}m'),
+                'session_count': int(sessions or 0),
+                'status': 'departed',
+            })
+
+    # Sort by first_seen time (earliest first)
+    attendees.sort(key=lambda a: a.get('first_seen') or '')
+
+    # Summary stats
+    total_seniors = len(attendees)
+    total_secs_all = sum(a['duration_seconds'] for a in attendees)
+    avg_duration = int(total_secs_all / total_seniors) if total_seniors else 0
+    still_present = sum(1 for a in attendees if a['status'] == 'present')
+
+    return jsonify({
+        'date': target_date.isoformat(),
+        'attendees': attendees,
+        'summary': {
+            'total_seniors': total_seniors,
+            'still_present': still_present,
+            'avg_duration': (f'{avg_duration // 3600}h '
+                             f'{(avg_duration % 3600) // 60}m'),
+            'total_duration': (f'{total_secs_all // 3600}h '
+                               f'{(total_secs_all % 3600) // 60}m'),
+        },
+    })
+
+
 # ── Room Occupancy Trending ──────────────────────────────────────
 
 

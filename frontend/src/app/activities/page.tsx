@@ -78,7 +78,7 @@ export default function ActivitiesPage() {
               disabled={loading}
               className="px-4 py-2 bg-teal text-white text-sm font-medium rounded-lg hover:bg-teal/90 transition-colors disabled:opacity-50"
             >
-              {loading ? 'Loading…' : 'Refresh'}
+              {loading ? 'Syncing…' : 'Sync from Odoo'}
             </button>
           </div>
 

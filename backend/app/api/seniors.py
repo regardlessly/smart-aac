@@ -1,12 +1,10 @@
-import os
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from ..extensions import db
-from ..lib.face_recognizer import get_person_name
 from ..models.senior import Senior, SeniorPresence
 from ..models.camera import Camera
 from .auth import login_required
@@ -48,43 +46,37 @@ def list_presence():
 @bp.route('/api/seniors/roster')
 @login_required
 def roster():
-    """Return roster of ALL known faces (synced from Odoo) with CCTV data.
+    """Return roster of ALL seniors synced from Odoo with CCTV data.
 
-    Source of members: known_faces/ directory (Odoo sync).
-    For each known face, look up matching Senior record to get CCTV
-    presence data (first_seen, last_seen, location, camera).
+    Source of members: Senior database table (all synced from Odoo).
+    For each senior, look up CCTV presence data (first_seen, last_seen,
+    location, camera).
     - Detected + last_seen within 15 min → active
     - Detected + last_seen over 15 min → inactive
     - Never detected → inactive, all fields blank
     """
     ACTIVE_THRESHOLD = 15 * 60  # 15 minutes in seconds
 
-    # 1. Get all known face names from known_faces/ directory
-    #    Use get_person_name() so names match what the face recognizer
-    #    produces (e.g. "ADRIAN_WONGGG.jpg" → "ADRIAN WONGGG").
-    data_dir = current_app.config['FACE_DATA_DIR']
-    known_dir = os.path.join(data_dir, 'known_faces')
-    known_names: set[str] = set()
-    if os.path.isdir(known_dir):
-        for fname in os.listdir(known_dir):
-            if not fname.lower().endswith(('.jpg', '.jpeg', '.png')):
-                continue
-            known_names.add(get_person_name(fname))
+    # 1. Get all seniors from the database (synced from Odoo)
+    seniors = Senior.query.order_by(Senior.name).all()
 
-    if not known_names:
+    if not seniors:
         return jsonify([])
 
-    # 2. Match names to Senior records (for presence data linkage)
-    seniors = Senior.query.filter(
-        Senior.name.in_(known_names), Senior.is_active.is_(True)
-    ).all()
-    senior_by_name: dict[str, Senior] = {s.name: s for s in seniors}
     senior_ids = [s.id for s in seniors]
 
-    # 3. Aggregated CCTV times per identified senior
+    # 3. Aggregated CCTV times per identified senior — today only
     presence_map: dict[int, dict] = {}
     room_map: dict[int, str | None] = {}
     camera_map: dict[int, str | None] = {}
+
+    # Compute today's time window
+    cctv_start = current_app.config.get('CCTV_START_HOUR', 7)
+    local_tz = datetime.now(timezone.utc).astimezone().tzinfo
+    today = date.today()
+    today_start = datetime(
+        today.year, today.month, today.day, cctv_start, tzinfo=local_tz
+    ).astimezone(timezone.utc).replace(tzinfo=None)
 
     if senior_ids:
         agg = db.session.query(
@@ -94,6 +86,7 @@ def roster():
         ).filter(
             SeniorPresence.senior_id.in_(senior_ids),
             SeniorPresence.status == 'identified',
+            SeniorPresence.arrived_at >= today_start,
         ).group_by(SeniorPresence.senior_id).all()
 
         for row in agg:
@@ -102,7 +95,7 @@ def roster():
                 'last_seen': row.last_seen,
             }
 
-        # Most recent presence per senior (for room/camera)
+        # Most recent presence per senior (for room/camera) — today only
         if presence_map:
             latest_sub = db.session.query(
                 SeniorPresence.senior_id,
@@ -110,6 +103,7 @@ def roster():
             ).filter(
                 SeniorPresence.senior_id.in_(list(presence_map.keys())),
                 SeniorPresence.status == 'identified',
+                SeniorPresence.arrived_at >= today_start,
             ).group_by(SeniorPresence.senior_id).subquery()
 
             latest_presences = db.session.query(SeniorPresence).options(
@@ -129,12 +123,11 @@ def roster():
                     (cam.location or cam.name) if cam else None
                 )
 
-    # 4. Build result for every known face
+    # 4. Build result for every senior in the database
     now = datetime.utcnow()
     result = []
-    for name in known_names:
-        senior = senior_by_name.get(name)
-        pdata = presence_map.get(senior.id) if senior else None
+    for senior in seniors:
+        pdata = presence_map.get(senior.id)
 
         if pdata:
             first_seen = pdata['first_seen']
@@ -149,27 +142,23 @@ def roster():
             status = 'inactive'
 
         result.append({
-            'name': name,
-            'senior_id': senior.id if senior else None,
+            'name': senior.name,
+            'senior_id': senior.id,
             'first_seen': (first_seen.isoformat() + 'Z')
             if first_seen else None,
             'last_seen': (last_seen.isoformat() + 'Z')
             if last_seen else None,
             'status': status,
-            'location': room_map.get(senior.id) if senior and pdata else None,
+            'location': room_map.get(senior.id) if pdata else None,
             'camera_location': (camera_map.get(senior.id)
-                                if senior and pdata else None),
+                                if pdata else None),
         })
 
-    # Sort: active first, then inactive-with-detections, then never-detected
+    # Sort: active first, then inactive; within each group by last_seen desc, then name
     active = [r for r in result if r['status'] == 'active']
-    detected_inactive = [r for r in result
-                         if r['status'] == 'inactive' and r['last_seen']]
-    never_detected = [r for r in result
-                      if r['status'] == 'inactive' and not r['last_seen']]
+    inactive = [r for r in result if r['status'] == 'inactive']
 
     active.sort(key=lambda r: r['last_seen'] or '', reverse=True)
-    detected_inactive.sort(key=lambda r: r['last_seen'] or '', reverse=True)
-    never_detected.sort(key=lambda r: r['name'].lower())
+    inactive.sort(key=lambda r: (r['last_seen'] or '', r['name']), reverse=True)
 
-    return jsonify(active + detected_inactive + never_detected)
+    return jsonify(active + inactive)

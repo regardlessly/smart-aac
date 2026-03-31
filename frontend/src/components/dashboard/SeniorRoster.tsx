@@ -31,15 +31,20 @@ function formatTime(iso: string | null): string {
 }
 
 export default memo(function SeniorRoster({ roster }: Props) {
+  // Only show seniors detected today (those with last_seen)
+  const todayRoster = useMemo(() =>
+    roster.filter(m => m.last_seen),
+  [roster])
+
   const { activeCount, inactiveCount } = useMemo(() => ({
-    activeCount: roster.filter(m => m.status === 'active').length,
-    inactiveCount: roster.filter(m => m.status === 'inactive').length,
-  }), [roster])
+    activeCount: todayRoster.filter(m => m.status === 'active').length,
+    inactiveCount: todayRoster.filter(m => m.status === 'inactive').length,
+  }), [todayRoster])
 
   return (
     <Panel
       title="Senior Roster"
-      subtitle={`${activeCount} active, ${inactiveCount} inactive`}
+      subtitle={`${todayRoster.length} attended today — ${activeCount} active, ${inactiveCount} departed`}
       action={
         <Link href="/members" className="text-xs text-teal hover:underline">
           View All
@@ -57,7 +62,14 @@ export default memo(function SeniorRoster({ roster }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {roster.map((member) => (
+            {todayRoster.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-muted text-sm">
+                  No seniors detected today
+                </td>
+              </tr>
+            ) : null}
+            {todayRoster.map((member) => (
               <tr
                 key={member.name}
                 className="hover:bg-surface/50 transition-colors"
@@ -101,7 +113,7 @@ export default memo(function SeniorRoster({ roster }: Props) {
                     className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
                       member.status === 'active'
                         ? 'bg-green-light text-green'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                        : 'bg-gray-100 text-gray-500'
                     }`}
                   >
                     <span

@@ -9,8 +9,6 @@ import RoomHeatmap from '@/components/dashboard/RoomHeatmap'
 import AlertConsole from '@/components/dashboard/AlertConsole'
 import ActivitiesPanel from '@/components/dashboard/ActivitiesPanel'
 import CCTVGrid from '@/components/dashboard/CCTVGrid'
-import LockerStatus from '@/components/dashboard/LockerStatus'
-import KioskLog from '@/components/dashboard/KioskLog'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
@@ -117,32 +115,20 @@ export default function DashboardPage() {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-12 gap-6">
-            {/* Left Column - Senior Roster (wide) */}
-            <div className="col-span-8">
+            {/* Left Column - Senior Roster + CCTV */}
+            <div className="col-span-8 space-y-6">
               <SeniorRoster roster={data.roster} />
+              <CCTVGrid cameras={data.cameras} snapshots={data.snapshots} />
             </div>
 
-            {/* Right Column - Heatmap + Alerts */}
+            {/* Right Column - Heatmap + Alerts + Activities */}
             <div className="col-span-4 space-y-6">
               <RoomHeatmap rooms={data.heatmap} />
               <AlertConsole
                 alerts={data.alerts}
                 onAcknowledge={handleAcknowledge}
               />
-            </div>
-          </div>
-
-          {/* Bottom Row */}
-          <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-4">
               <ActivitiesPanel activities={data.activities} />
-            </div>
-            <div className="col-span-4">
-              <CCTVGrid cameras={data.cameras} snapshots={data.snapshots} />
-            </div>
-            <div className="col-span-4 space-y-6">
-              <LockerStatus lockers={data.lockers} />
-              <KioskLog events={data.kioskEvents} />
             </div>
           </div>
         </main>

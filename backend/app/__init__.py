@@ -36,16 +36,23 @@ def create_app(config_name=None):
         run_seed(force=force)
         click.echo('Database seeded successfully.')
 
-    # Start camera worker if enabled
+    # Start camera worker if enabled (in background thread so server starts immediately)
     if app.config.get('CAMERA_WORKER_ENABLED', False):
-        with app.app_context():
-            try:
-                from .services.camera_worker import CameraWorker
-                worker = CameraWorker(app)
-                worker.start()
-                app.camera_worker = worker
-            except Exception as e:
-                app.logger.warning(f'Camera worker failed to start: {e}')
+        import threading
+
+        def _start_camera_worker():
+            with app.app_context():
+                try:
+                    from .services.camera_worker import CameraWorker
+                    worker = CameraWorker(app)
+                    worker.start()
+                    app.camera_worker = worker
+                    app.logger.info('Camera worker started successfully')
+                except Exception as e:
+                    app.logger.warning(f'Camera worker failed to start: {e}')
+
+        t = threading.Thread(target=_start_camera_worker, daemon=True)
+        t.start()
 
     # Start daily summary scheduler
     if config_name != 'testing':

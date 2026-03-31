@@ -166,7 +166,11 @@ class FaceRecognitionEngine:
         self._load_known_faces()
 
     def _load_known_faces(self):
-        """Load known face images and extract embeddings using the loader instance."""
+        """Load known face images and extract embeddings using the loader instance.
+
+        Uses a .npz embedding cache keyed by filename+mtime so unchanged images
+        are not re-processed on restart — reducing startup from ~5 min to ~5 sec.
+        """
         self.known_embeddings = []
 
         if not os.path.isdir(self.known_faces_dir):
@@ -174,8 +178,22 @@ class FaceRecognitionEngine:
             os.makedirs(self.known_faces_dir, exist_ok=True)
             return
 
+        # ── Embedding cache ───────────────────────────────────────────────────
+        cache_path = os.path.join(self.known_faces_dir, '.embedding_cache.npz')
+        cache = {}
+        if os.path.exists(cache_path):
+            try:
+                raw = np.load(cache_path, allow_pickle=True)
+                cache = dict(raw['cache'].item())
+                logger.info(f"  Embedding cache loaded: {len(cache)} entries")
+            except Exception as e:
+                logger.warning(f"  Cache load failed (will rebuild): {e}")
+                cache = {}
+
         supported = ('.jpg', '.jpeg', '.png')
         person_counts = {}
+        new_cache = {}
+        cache_dirty = False
 
         for filename in sorted(os.listdir(self.known_faces_dir)):
             if not filename.lower().endswith(supported):
@@ -183,6 +201,17 @@ class FaceRecognitionEngine:
 
             filepath = os.path.join(self.known_faces_dir, filename)
             name = get_person_name(filename)
+            mtime = os.path.getmtime(filepath)
+            cache_key = f"{filename}:{mtime}"
+
+            # Use cached embedding if file unchanged
+            if cache_key in cache:
+                embedding = cache[cache_key]
+                new_cache[cache_key] = embedding
+                self.known_embeddings.append((name, embedding))
+                person_counts[name] = person_counts.get(name, 0) + 1
+                logger.debug(f"  Cached: {filename} -> '{name}'")
+                continue
 
             image_bgr = cv2.imread(filepath)
             if image_bgr is None:
@@ -201,14 +230,25 @@ class FaceRecognitionEngine:
             embedding = best_face.normed_embedding
 
             self.known_embeddings.append((name, embedding))
+            new_cache[cache_key] = embedding
             person_counts[name] = person_counts.get(name, 0) + 1
+            cache_dirty = True
             logger.info(f"  Loaded: {filename} -> '{name}' (det={best_face.det_score:.3f})")
+
+        # Save updated cache if anything changed
+        if cache_dirty or len(new_cache) != len(cache):
+            try:
+                np.savez_compressed(cache_path, cache=np.array(new_cache, dtype=object))
+                logger.info(f"  Embedding cache saved: {len(new_cache)} entries")
+            except Exception as e:
+                logger.warning(f"  Cache save failed: {e}")
 
         if not self.known_embeddings:
             logger.info("No known faces loaded. All faces will be reported as strangers.")
         else:
+            logger.info(f"  Total: {len(self.known_embeddings)} embeddings for {len(person_counts)} persons")
             for person, count in person_counts.items():
-                logger.info(f"  {person}: {count} embedding(s)")
+                logger.debug(f"  {person}: {count} embedding(s)")
 
     def analyze_frame(self, frame):
         """

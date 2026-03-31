@@ -9,7 +9,7 @@ class Config:
         f'sqlite:///{os.path.join(basedir, "smart_aac.db")}'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    CORS_ORIGINS = ['http://localhost:3000']
+    CORS_ORIGINS = ['http://localhost:3000', 'http://localhost:3100']
 
     # Authentication / JWT (fixed default for dev; set JWT_SECRET_KEY env var in production)
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-secret-change-in-production')
@@ -21,9 +21,9 @@ class Config:
     ODOO_DB_NAME = os.environ.get('ODOO_DB_NAME', 'caritahub-aac-dev')
     ODOO_CENTRE_ID = os.environ.get('ODOO_CENTRE_ID', '9')
 
-    # Camera worker (default off for dev without cameras)
+    # Camera worker (enabled by default — connects to real RTSP cameras)
     CAMERA_WORKER_ENABLED = os.environ.get(
-        'CAMERA_WORKER_ENABLED', 'false').lower() == 'true'
+        'CAMERA_WORKER_ENABLED', 'true').lower() == 'true'
     CAMERA_WORKER_INTERVAL = int(
         os.environ.get('CAMERA_WORKER_INTERVAL', '5'))
 

@@ -110,6 +110,7 @@ export interface Alert {
   title: string
   description: string
   camera_id: number | null
+  camera_name: string | null
   created_at: string
   acknowledged: boolean
 }
@@ -121,24 +122,21 @@ export interface AlertCounts {
   total: number
 }
 
-export interface Locker {
-  id: number
-  locker_number: string
-  status: 'available' | 'in_use' | 'reserved'
-  assigned_to: number | null
-  assigned_to_name: string | null
-  equipment_description: string | null
+export interface AlertsPage {
+  alerts: Alert[]
+  total: number
+  page: number
+  per_page: number
+  pages: number
 }
 
 export interface KioskEvent {
   id: number
   senior_id: number
   senior_name: string
-  event_type: 'check_in' | 'locker_open' | 'activity_register'
+  event_type: 'check_in' | 'activity_register'
   activity_id: number | null
   activity_name: string | null
-  locker_id: number | null
-  locker_number: string | null
   timestamp: string
 }
 
@@ -344,6 +342,33 @@ export interface MemberPeersData {
   month: string
   peers: PeerEntry[]
   total_peers: number
+}
+
+// ── Daily Attendance ──
+
+export interface DailyAttendee {
+  senior_id: number
+  senior_name: string
+  first_seen: string | null
+  last_seen: string | null
+  rooms: string[]
+  duration_seconds: number
+  duration_formatted: string
+  session_count: number
+  status: 'present' | 'departed'
+}
+
+export interface DailyAttendanceSummary {
+  total_seniors: number
+  still_present: number
+  avg_duration: string
+  total_duration: string
+}
+
+export interface DailyAttendanceData {
+  date: string
+  attendees: DailyAttendee[]
+  summary: DailyAttendanceSummary
 }
 
 export interface FRStatus {

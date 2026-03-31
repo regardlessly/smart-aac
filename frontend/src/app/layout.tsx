@@ -9,13 +9,7 @@ export const metadata: Metadata = {
 
 const themeScript = `
 (function() {
-  try {
-    var s = localStorage.getItem('theme');
-    var t = s === 'dark' || s === 'light'
-      ? s
-      : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    if (t === 'dark') document.documentElement.classList.add('dark');
-  } catch(e) {}
+  try { localStorage.removeItem('theme'); } catch(e) {}
 })();
 `
 

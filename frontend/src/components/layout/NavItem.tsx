@@ -24,6 +24,7 @@ const ICONS: Record<string, string> = {
   report: '📋',
   members: '🧑‍🤝‍🧑',
   settings: '⚙️',
+  logs: '🖥',
 }
 
 export default function NavItem({ label, href, icon, badge }: NavItemProps) {
@@ -35,8 +36,8 @@ export default function NavItem({ label, href, icon, badge }: NavItemProps) {
       href={href}
       className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
         active
-          ? 'bg-teal/10 text-teal font-medium'
-          : 'text-gray-300 hover:bg-white/5 hover:text-white'
+          ? 'bg-white/20 text-white font-bold'
+          : 'text-white/70 hover:bg-white/10 hover:text-white'
       }`}
     >
       <span className="text-base w-5 text-center">{ICONS[icon] || '•'}</span>

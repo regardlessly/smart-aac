@@ -14,7 +14,10 @@ bp = Blueprint('alerts', __name__)
 def list_alerts():
     acknowledged = request.args.get('acknowledged')
     alert_type = request.args.get('type')
-    limit = request.args.get('limit', 200, type=int)
+    search = request.args.get('search', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    per_page = min(per_page, 200)
 
     query = Alert.query.options(joinedload(Alert.camera))
 
@@ -25,8 +28,24 @@ def list_alerts():
     if alert_type:
         query = query.filter_by(type=alert_type)
 
-    alerts = query.order_by(Alert.created_at.desc()).limit(limit).all()
-    return jsonify([a.to_dict() for a in alerts])
+    if search:
+        like = f'%{search}%'
+        query = query.filter(
+            db.or_(Alert.title.ilike(like), Alert.description.ilike(like)))
+
+    total = query.count()
+    alerts = (query.order_by(Alert.created_at.desc())
+              .offset((page - 1) * per_page)
+              .limit(per_page)
+              .all())
+
+    return jsonify({
+        'alerts': [a.to_dict() for a in alerts],
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'pages': (total + per_page - 1) // per_page,
+    })
 
 
 @bp.route('/api/alerts/count')
@@ -57,3 +76,17 @@ def acknowledge_alert(alert_id):
     alert.acknowledged = True
     db.session.commit()
     return jsonify(alert.to_dict())
+
+
+@bp.route('/api/alerts/bulk-acknowledge', methods=['PUT'])
+@login_required
+def bulk_acknowledge():
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids', [])
+    if not ids:
+        return jsonify({'acknowledged': 0})
+    count = Alert.query.filter(
+        Alert.id.in_(ids), Alert.acknowledged == False  # noqa: E712
+    ).update({Alert.acknowledged: True}, synchronize_session='fetch')
+    db.session.commit()
+    return jsonify({'acknowledged': count})

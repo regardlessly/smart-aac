@@ -64,11 +64,24 @@ export const api = {
     return apiFetch<import('./types').AacActivitiesResponse>(
       `/api/activities${q ? '?' + q : ''}`)
   },
-  alerts: () => apiFetch<import('./types').Alert[]>('/api/alerts'),
+  alerts: (params?: { type?: string; acknowledged?: string; search?: string; page?: number; per_page?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.type) qs.set('type', params.type)
+    if (params?.acknowledged) qs.set('acknowledged', params.acknowledged)
+    if (params?.search) qs.set('search', params.search)
+    if (params?.page) qs.set('page', String(params.page))
+    if (params?.per_page) qs.set('per_page', String(params.per_page))
+    const q = qs.toString()
+    return apiFetch<import('./types').AlertsPage>(`/api/alerts${q ? '?' + q : ''}`)
+  },
   alertCounts: () => apiFetch<import('./types').AlertCounts>('/api/alerts/count'),
   acknowledgeAlert: (id: number) =>
     apiFetch(`/api/alerts/${id}/acknowledge`, { method: 'PUT' }),
-  lockers: () => apiFetch<import('./types').Locker[]>('/api/lockers'),
+  bulkAcknowledgeAlerts: (ids: number[]) =>
+    apiFetch<{ acknowledged: number }>('/api/alerts/bulk-acknowledge', {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    }),
   kioskEvents: () => apiFetch<import('./types').KioskEvent[]>('/api/kiosk-events'),
   roster: () => apiFetch<import('./types').RosterMember[]>('/api/seniors/roster'),
   cameras: () => apiFetch<import('./types').Camera[]>('/api/cameras'),
@@ -143,6 +156,13 @@ export const api = {
       '/api/cameras/known-faces/sync-odoo', { method: 'POST' }),
 
   // ── Reports ──
+  dailyAttendance: (params?: { date?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.date) qs.set('date', params.date)
+    const q = qs.toString()
+    return apiFetch<import('./types').DailyAttendanceData>(
+      `/api/reports/daily-attendance${q ? '?' + q : ''}`)
+  },
   roomOccupancy: (params?: { room_id?: number; range?: string }) => {
     const qs = new URLSearchParams()
     if (params?.room_id) qs.set('room_id', String(params.room_id))

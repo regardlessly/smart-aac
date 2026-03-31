@@ -1,11 +1,12 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, current_app, g, jsonify
 from sqlalchemy import func
 from datetime import date, datetime, timezone
+
+import requests as http_requests
 
 from ..extensions import db
 from ..models.senior import Senior
 from ..models.room import Room
-from ..models.activity import Activity
 from ..models.alert import Alert
 from .auth import login_required
 
@@ -76,10 +77,28 @@ def get_dashboard():
         if len(room_all_names[rid]) + room_strangers.get(rid, 0) > 0
     )
 
-    # Today's activities
-    todays_activities = Activity.query.filter(
-        Activity.scheduled_time >= today_start
-    ).count()
+    # Today's activities — fetch from Odoo
+    todays_activities = 0
+    user = g.current_user
+    if user and user.odoo_access_token:
+        try:
+            odoo_base = current_app.config['ODOO_BASE_URL'].rstrip('/')
+            centre_id = current_app.config['ODOO_CENTRE_ID']
+            resp = http_requests.get(
+                f'{odoo_base}/centre_ops/aac_activities',
+                params={'period': 'today', 'centre_id': centre_id},
+                headers={'access-token': user.odoo_access_token},
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                result = data.get('result', data)
+                if isinstance(result, list):
+                    todays_activities = len(result)
+                elif isinstance(result, dict) and 'activities' in result:
+                    todays_activities = len(result['activities'])
+        except Exception:
+            pass
 
     # Active alerts
     alert_count = Alert.query.filter_by(acknowledged=False).count()

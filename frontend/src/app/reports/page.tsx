@@ -81,8 +81,21 @@ export default function ReportsPage() {
       <div className="flex-1 ml-60 overflow-y-auto">
         <TopBar connected={false} />
         <main className="p-6 space-y-6">
+          {/* Report Tabs */}
+          <div className="flex items-center gap-1 border-b border-border">
+            <span className="px-4 py-2.5 text-sm font-semibold text-teal border-b-2 border-teal">
+              Room Occupancy
+            </span>
+            <a
+              href="/reports/daily-attendance"
+              className="px-4 py-2.5 text-sm font-medium text-muted hover:text-text border-b-2 border-transparent"
+            >
+              Daily Attendance
+            </a>
+          </div>
+
           <div>
-            <h1 className="text-2xl font-bold text-text">Reports</h1>
+            <h1 className="text-2xl font-bold text-text">Room Occupancy</h1>
             <p className="text-sm text-muted mt-1">
               Room occupancy trends
             </p>

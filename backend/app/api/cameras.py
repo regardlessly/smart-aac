@@ -159,6 +159,7 @@ def camera_status():
     """Return FaceRecognizer session status."""
     from ..services.face_recognition_service import FaceRecognitionService
     status = FaceRecognitionService.get_status()
+
     return jsonify(status)
 
 
@@ -444,6 +445,26 @@ def _run_sync_background(app, odoo_base, centre_id, access_token,
             page += 1
 
         total = len(all_members)
+
+        # Phase 1.5: Upsert Senior records in the database
+        from ..models.senior import Senior
+        existing = {s.name: s for s in Senior.query.all()}
+        for m in all_members:
+            name = (m.get('name') or '').strip()
+            nric = (m.get('nricFin') or '')[-4:] or '????'
+            if not name:
+                continue
+            if name in existing:
+                senior = existing[name]
+                senior.is_active = True
+            else:
+                senior = Senior(name=name, nric_last4=nric, is_active=True)
+                db.session.add(senior)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
         push_event({
             'type': 'sync_progress',
             'phase': 'downloading',

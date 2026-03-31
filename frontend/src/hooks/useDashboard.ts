@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import type {
   DashboardStats, SeniorPresence, RoomHeatmap, AacActivity,
-  Alert, Locker, KioskEvent, CCTVSnapshot, AlertCounts, Camera,
+  Alert, KioskEvent, CCTVSnapshot, AlertCounts, Camera,
   RosterMember,
 } from '@/lib/types'
 
@@ -16,7 +16,6 @@ interface DashboardData {
   activities: AacActivity[]
   alerts: Alert[]
   alertCounts: AlertCounts | null
-  lockers: Locker[]
   kioskEvents: KioskEvent[]
   cameras: Camera[]
   snapshots: CCTVSnapshot[]
@@ -33,7 +32,6 @@ export function useDashboard(sseConnected: boolean): DashboardData {
   const [activities, setActivities] = useState<AacActivity[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [alertCounts, setAlertCounts] = useState<AlertCounts | null>(null)
-  const [lockers, setLockers] = useState<Locker[]>([])
   const [kioskEvents, setKioskEvents] = useState<KioskEvent[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
   const [snapshots, setSnapshots] = useState<CCTVSnapshot[]>([])
@@ -42,7 +40,7 @@ export function useDashboard(sseConnected: boolean): DashboardData {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [s, p, ros, h, act, al, ac, l, k, cam, sn] = await Promise.all([
+      const [s, p, ros, h, act, al, ac, k, cam, sn] = await Promise.all([
         api.dashboard(),
         api.presences(),
         api.roster(),
@@ -50,7 +48,6 @@ export function useDashboard(sseConnected: boolean): DashboardData {
         api.activities(),
         api.alerts(),
         api.alertCounts(),
-        api.lockers(),
         api.kioskEvents(),
         api.cameras(),
         api.latestSnapshots(),
@@ -61,9 +58,8 @@ export function useDashboard(sseConnected: boolean): DashboardData {
       setHeatmap(h)
       const actList = Array.isArray(act) ? act : ((act as { activities?: AacActivity[] }).activities ?? [])
       setActivities(actList)
-      setAlerts(al)
+      setAlerts(al.alerts)
       setAlertCounts(ac)
-      setLockers(l)
       setKioskEvents(k)
       setCameras(cam)
       setSnapshots(sn)
@@ -88,6 +84,6 @@ export function useDashboard(sseConnected: boolean): DashboardData {
 
   return {
     stats, presences, roster, heatmap, activities, alerts, alertCounts,
-    lockers, kioskEvents, cameras, snapshots, loading, error, refresh: fetchAll,
+    kioskEvents, cameras, snapshots, loading, error, refresh: fetchAll,
   }
 }
