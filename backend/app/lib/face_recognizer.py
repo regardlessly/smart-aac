@@ -37,6 +37,11 @@ import tempfile
 from insightface.app import FaceAnalysis
 
 logger = logging.getLogger("face_recognizer")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter('[face_recognizer] %(message)s'))
+    logger.addHandler(_h)
 
 
 # ── Person Detector (YOLO Stage 1) ───────────────────────────────────────────
@@ -195,22 +200,28 @@ class FaceRecognitionEngine:
         new_cache = {}
         cache_dirty = False
 
-        for filename in sorted(os.listdir(self.known_faces_dir)):
-            if not filename.lower().endswith(supported):
-                continue
+        all_files = [f for f in sorted(os.listdir(self.known_faces_dir))
+                     if f.lower().endswith(supported)]
+        total = len(all_files)
+        cached_count = 0
+        processed_count = 0
 
+        logger.info(f"  Loading {total} face images (cache has {len(cache)} entries)...")
+
+        for idx, filename in enumerate(all_files):
             filepath = os.path.join(self.known_faces_dir, filename)
             name = get_person_name(filename)
             mtime = os.path.getmtime(filepath)
             cache_key = f"{filename}:{mtime}"
 
-            # Use cached embedding if file unchanged
+            # Use cached embedding if file unchanged (None = previously no face detected)
             if cache_key in cache:
                 embedding = cache[cache_key]
                 new_cache[cache_key] = embedding
-                self.known_embeddings.append((name, embedding))
-                person_counts[name] = person_counts.get(name, 0) + 1
-                logger.debug(f"  Cached: {filename} -> '{name}'")
+                if embedding is not None:
+                    self.known_embeddings.append((name, embedding))
+                    person_counts[name] = person_counts.get(name, 0) + 1
+                cached_count += 1
                 continue
 
             image_bgr = cv2.imread(filepath)
@@ -222,6 +233,9 @@ class FaceRecognitionEngine:
             faces = self._loader_app.get(image_bgr)
 
             if not faces:
+                # Cache the miss so we don't re-process on next startup
+                new_cache[cache_key] = None
+                cache_dirty = True
                 logger.debug(f"  Skipped: {filename} (no face detected)")
                 continue
 
@@ -233,7 +247,12 @@ class FaceRecognitionEngine:
             new_cache[cache_key] = embedding
             person_counts[name] = person_counts.get(name, 0) + 1
             cache_dirty = True
-            logger.info(f"  Loaded: {filename} -> '{name}' (det={best_face.det_score:.3f})")
+            processed_count += 1
+
+            # Log progress every 50 new images
+            if processed_count % 50 == 0:
+                logger.info(f"  [InsightFace] Processing: {idx+1}/{total} images "
+                            f"({processed_count} new, {cached_count} cached)")
 
         # Save updated cache if anything changed
         if cache_dirty or len(new_cache) != len(cache):
