@@ -531,7 +531,9 @@ def capture_frame(rtsp_url, camera_name='Camera'):
     """Connect to RTSP stream, grab a single frame, then disconnect."""
     cap = None
     try:
-        cap = cv2.VideoCapture(rtsp_url)
+        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+        cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000)
+        cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5000)
         if not cap.isOpened():
             logger.error(f"[{camera_name}] Failed to connect to stream")
             return None
@@ -1590,6 +1592,8 @@ class FaceRecognizer:
         self._auto_learn_threshold = auto_learn_threshold
         self._max_auto_learn_per_person = max_auto_learn_per_person
         self._save_captures = save_captures
+        self._latest_frames = {}  # camera_name -> latest captured frame
+        self._latest_frames_lock = threading.Lock()
 
         self._output_dir = output_dir or tempfile.mkdtemp(prefix="face_recognizer_")
         os.makedirs(self._output_dir, exist_ok=True)
@@ -1753,6 +1757,11 @@ class FaceRecognizer:
                     removed, name,
                     len(self._engine.known_embeddings) if self._engine else 0)
 
+    def get_latest_frame(self, camera_name):
+        """Return the latest captured frame for a camera, or None."""
+        with self._latest_frames_lock:
+            return self._latest_frames.get(camera_name)
+
     def _camera_loop(self, cam_cfg):
         """Internal camera thread: capture frames, analyse batches, fire callbacks."""
         camera_name = cam_cfg.get('name', 'Camera')
@@ -1797,6 +1806,10 @@ class FaceRecognizer:
 
             logger.info("[%s] Capture #%d at %s - OK (%dx%d)",
                         camera_name, capture_count, timestamp, fw, fh)
+
+            # Store latest frame for snapshot loop
+            with self._latest_frames_lock:
+                self._latest_frames[camera_name] = frame.copy()
 
             # Trigger batch analysis
             if len(batch_frames) >= self._analyse_every:

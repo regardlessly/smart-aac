@@ -266,7 +266,9 @@ export default function CCTVPage() {
                 </span>
               </div>
               <div className={`grid gap-4 ${
-                roomCameras.length === 1 ? 'grid-cols-1 max-w-2xl' : 'grid-cols-2'
+                roomCameras.length <= 2 ? 'grid-cols-1 sm:grid-cols-2'
+                : roomCameras.length <= 4 ? 'grid-cols-2 lg:grid-cols-3'
+                : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
               }`}>
                 {roomCameras.map((cam) => {
                   const snap = snapshotMap.get(cam.id)

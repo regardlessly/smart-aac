@@ -18,6 +18,11 @@ import base64
 import traceback
 
 logger = logging.getLogger('face_recognition_service')
+logger.setLevel(logging.DEBUG)
+_frs_handler = logging.StreamHandler()
+_frs_handler.setFormatter(logging.Formatter('[face_recognition_service] %(message)s'))
+if not logger.handlers:
+    logger.addHandler(_frs_handler)
 
 # Patch InsightFace's makedirs bug (doesn't use exist_ok=True)
 _original_makedirs = os.makedirs
@@ -263,10 +268,13 @@ class FaceRecognitionService:
         FaceRecognizer's callbacks fire per-detection, not per-frame.
         This thread captures periodic frames to keep the CCTVGrid fresh.
         """
+        logger.info('Snapshot loop starting (waiting 10s for engine)...')
         # Wait for the engine to be ready
         time.sleep(10)
+        logger.info('Snapshot loop active — cameras: %s',
+                    list(cls._camera_id_map.keys()))
 
-        from ..lib.face_recognizer import capture_frame, annotate_frame
+        from ..lib.face_recognizer import annotate_frame
 
         while cls._running:
             try:
@@ -284,9 +292,18 @@ class FaceRecognitionService:
                             if not camera or not camera.rtsp_url:
                                 continue
 
-                            frame = capture_frame(
-                                camera.rtsp_url, cam_name)
+                            # Use latest frame from FaceRecognizer's
+                            # capture threads (avoids double RTSP connections)
+                            frame = None
+                            with cls._lock:
+                                if cls._instance:
+                                    frame = cls._instance.get_latest_frame(
+                                        cam_name)
+
                             if frame is None:
+                                logger.debug(
+                                    'No frame available yet for %s',
+                                    cam_name)
                                 continue
 
                             # Annotate using FaceRecognizer's engine
@@ -331,7 +348,16 @@ class FaceRecognitionService:
                                 snapshot_b64=b64,
                             )
                             db.session.add(snapshot)
-                            db.session.commit()
+                            for _retry in range(3):
+                                try:
+                                    db.session.commit()
+                                    break
+                                except Exception:
+                                    db.session.rollback()
+                                    time.sleep(0.5)
+                            logger.debug(
+                                'Snapshot saved: %s (id=%d, unk=%d)',
+                                cam_name, identified, unidentified)
 
                             push_event({
                                 'type': 'snapshot',

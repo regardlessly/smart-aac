@@ -23,7 +23,7 @@ export default memo(function CCTVGrid({ cameras, snapshots }: Props) {
         </a>
       }
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {cameras.map((cam) => {
           const snap = snapshotMap.get(cam.id)
           return (

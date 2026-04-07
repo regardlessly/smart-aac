@@ -76,15 +76,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+      <div className="w-full" style={{ maxWidth: '400px', minWidth: '320px' }}>
         {/* Logo / Title */}
         <div className="text-center mb-8">
           <div className="w-14 h-14 bg-primary rounded-[14px] flex items-center justify-center mx-auto mb-4" style={{ boxShadow: '0 6px 24px rgba(61,114,232,0.13)' }}>
             <span className="text-white text-2xl font-bold">C</span>
           </div>
-          <h1 className="text-[22px] font-bold text-text">Smart AAC Dashboard</h1>
-          <p className="text-[13px] text-muted mt-1">Sign in to continue</p>
+          <h1 className="text-[22px] font-bold text-text whitespace-nowrap">Smart AAC Dashboard</h1>
+          <p className="text-[13px] text-muted mt-1 whitespace-nowrap">Sign in to continue</p>
         </div>
 
         {/* Login Form */}
@@ -141,20 +141,20 @@ export default function LoginPage() {
         </form>
 
         {/* Server Settings (collapsible) */}
-        <div className="mt-4">
+        <div className="mt-5">
           <button
             type="button"
             onClick={() => setShowServer(!showServer)}
-            className="flex items-center gap-1.5 text-xs text-muted hover:text-text transition-colors mx-auto"
+            className="flex items-center gap-1.5 text-[12px] text-muted hover:text-text transition-colors mx-auto"
           >
-            <span className={`transition-transform ${showServer ? 'rotate-90' : ''}`}>&#9654;</span>
+            <span className={`transition-transform text-[10px] ${showServer ? 'rotate-90' : ''}`}>&#9654;</span>
             Server Settings
           </button>
 
           {showServer && (
-            <div className="mt-3 bg-panel rounded-xl border border-border p-5 space-y-3">
+            <div className="mt-3 bg-panel rounded-[14px] border border-border p-5 space-y-3" style={{ boxShadow: '0 2px 14px rgba(61,114,232,0.08)' }}>
               <div>
-                <label htmlFor="odoo-url" className="block text-xs font-medium text-text mb-1">
+                <label htmlFor="odoo-url" className="block text-[12px] font-semibold text-text mb-1">
                   Odoo Base URL
                 </label>
                 <input
@@ -162,14 +162,14 @@ export default function LoginPage() {
                   type="url"
                   value={odooUrl}
                   onChange={(e) => setOdooUrl(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
-                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                  className="w-full px-3 py-2 bg-white border border-border rounded-[8px] text-[13px] text-text
+                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   placeholder="https://odoo.example.com"
                 />
               </div>
 
               <div>
-                <label htmlFor="odoo-db" className="block text-xs font-medium text-text mb-1">
+                <label htmlFor="odoo-db" className="block text-[12px] font-semibold text-text mb-1">
                   Database Name
                 </label>
                 <input
@@ -177,14 +177,14 @@ export default function LoginPage() {
                   type="text"
                   value={odooDb}
                   onChange={(e) => setOdooDb(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
-                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                  className="w-full px-3 py-2 bg-white border border-border rounded-[8px] text-[13px] text-text
+                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   placeholder="mydb"
                 />
               </div>
 
               <div>
-                <label htmlFor="odoo-centre" className="block text-xs font-medium text-text mb-1">
+                <label htmlFor="odoo-centre" className="block text-[12px] font-semibold text-text mb-1">
                   Centre ID
                 </label>
                 <input
@@ -192,8 +192,8 @@ export default function LoginPage() {
                   type="text"
                   value={odooCentre}
                   onChange={(e) => setOdooCentre(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
-                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                  className="w-full px-3 py-2 bg-white border border-border rounded-[8px] text-[13px] text-text
+                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   placeholder="9"
                 />
               </div>
@@ -202,16 +202,16 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleSaveServer}
                 disabled={serverLoading}
-                className="w-full py-2 bg-surface hover:bg-border text-text text-sm font-medium rounded-lg
+                className="w-full py-2 bg-surface hover:bg-border text-text text-[13px] font-semibold rounded-[10px]
                            border border-border transition-colors disabled:opacity-50"
               >
-                {serverSaved ? 'Saved!' : serverLoading ? 'Saving\u2026' : 'Save Server Settings'}
+                {serverSaved ? 'Saved!' : serverLoading ? 'Saving...' : 'Save Server Settings'}
               </button>
             </div>
           )}
         </div>
 
-        <p className="text-center text-xs text-muted mt-6">
+        <p className="text-center text-[11px] text-muted mt-6">
           CaritaHub &middot; Smart Active Ageing Centre
         </p>
       </div>
