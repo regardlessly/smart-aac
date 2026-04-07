@@ -38,7 +38,7 @@ export default function DashboardPage() {
       <div className="flex h-screen">
         <Sidebar />
         <div className="flex-1 ml-60">
-          <TopBar connected={false} />
+          <TopBar connected={connected} />
           <div className="flex items-center justify-center h-[calc(100vh-3.5rem)]">
             <div className="text-muted text-lg">Loading dashboard...</div>
           </div>
@@ -52,7 +52,7 @@ export default function DashboardPage() {
       <div className="flex h-screen">
         <Sidebar />
         <div className="flex-1 ml-60">
-          <TopBar connected={false} />
+          <TopBar connected={connected} />
           <div className="flex flex-col items-center justify-center h-[calc(100vh-3.5rem)] gap-4">
             <div className="text-coral text-lg">Failed to load dashboard</div>
             <div className="text-muted text-sm">{data.error}</div>

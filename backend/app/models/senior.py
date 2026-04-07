@@ -7,6 +7,7 @@ class Senior(db.Model):
     __tablename__ = 'seniors'
 
     id = db.Column(db.Integer, primary_key=True)
+    odoo_id = db.Column(db.String(64), unique=True, nullable=True, index=True)
     name = db.Column(db.String(100), nullable=False)
     nric_last4 = db.Column(db.String(5), nullable=False)
     photo_path = db.Column(db.String(255), nullable=True)

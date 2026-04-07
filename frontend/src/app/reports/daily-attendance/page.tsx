@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
+import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
 import type { DailyAttendanceData } from '@/lib/types'
 
 export default function DailyAttendancePage() {
+  const { connected } = useSSE()
   const [data, setData] = useState<DailyAttendanceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +43,7 @@ export default function DailyAttendancePage() {
     <div className="flex h-screen" style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif' }}>
       <Sidebar />
       <div className="flex-1 ml-60 overflow-y-auto" style={{ backgroundColor: '#fff' }}>
-        <TopBar connected={false} />
+        <TopBar connected={connected} />
         <main className="p-6 space-y-6">
           {/* Report Tabs */}
           <div className="flex items-center gap-1 border-b" style={{ borderColor: '#efefef' }}>

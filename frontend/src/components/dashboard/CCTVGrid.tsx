@@ -56,7 +56,7 @@ export default memo(function CCTVGrid({ cameras, snapshots }: Props) {
               {/* Info bar */}
               {snap && (
                 <div className="bg-navy-dark px-2 py-1.5 flex items-center justify-between text-[10px]">
-                  <span className="text-gray-400">{cam.location}</span>
+                  <span className="text-gray-400">{cam.room_name || cam.location}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-green">
                       {snap.identified_count} ID

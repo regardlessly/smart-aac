@@ -220,7 +220,22 @@ def list_known_faces():
                 person = os.path.splitext(fname)[0]
             person_counts[person] = person_counts.get(person, 0) + 1
 
-    faces = [{'name': name, 'image_count': count}
+    # Get embedding counts from the running face engine
+    embedding_counts = {}
+    try:
+        from ..services.face_recognition_service import FaceRecognitionService
+        with FaceRecognitionService._lock:
+            if FaceRecognitionService._instance:
+                engine = FaceRecognitionService._instance._engine
+                if engine:
+                    for name, _ in engine.known_embeddings:
+                        safe = name.replace(' ', '_')
+                        embedding_counts[safe] = embedding_counts.get(safe, 0) + 1
+    except Exception:
+        pass
+
+    faces = [{'name': name, 'image_count': count,
+              'embedding_count': embedding_counts.get(name, 0)}
              for name, count in sorted(person_counts.items())]
     return jsonify(faces)
 
@@ -365,32 +380,131 @@ def _resolve_profile_image(profile_image, odoo_base_url):
     return (ext, resp.content)
 
 
-def _download_member_face(member, odoo_base, known_faces_dir):
-    """Download a single member's profile image. Returns (name, status)."""
+def _is_placeholder_image(profile_image, image_bytes=None):
+    """Check if the profile image is a default Odoo placeholder/avatar.
+
+    Two-stage check:
+      1. URL-based heuristics (no download needed)
+      2. Content-based: Odoo's default avatar is exactly 6078 bytes.
+         If image_bytes are provided, check the size.
+    """
+    if not profile_image:
+        return True
+    pi = profile_image.strip().lower()
+    # Common Odoo static placeholder paths
+    if any(s in pi for s in (
+        '/web/static/img/user_icon',
+        '/web/static/img/placeholder',
+        'avatar_grey',
+        'default_image',
+    )):
+        return True
+    # Very short base64 strings are likely 1x1 pixel placeholders
+    if pi.startswith('data:image/') and len(pi) < 200:
+        return True
+    # Content check: Odoo default avatar is exactly 6078 bytes
+    if image_bytes is not None and len(image_bytes) == 6078:
+        return True
+    return False
+
+
+# Sync metadata file tracks write_date per member so unchanged profiles are
+# skipped without downloading the image at all.
+_SYNC_META_FILE = '.sync_meta.json'
+
+
+def _load_sync_meta(known_faces_dir):
+    """Load {name: write_date} from the sync metadata file."""
+    import json
+    meta_path = os.path.join(known_faces_dir, _SYNC_META_FILE)
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, 'r') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _save_sync_meta(known_faces_dir, meta):
+    """Persist the sync metadata file."""
+    import json
+    meta_path = os.path.join(known_faces_dir, _SYNC_META_FILE)
+    with open(meta_path, 'w') as f:
+        json.dump(meta, f)
+
+
+def _download_member_face(member, odoo_base, known_faces_dir, sync_meta):
+    """Download a single member's profile image. Returns (name, status, err).
+
+    Incremental logic (no unnecessary downloads):
+      1. Skip if profileImage is a placeholder / missing
+      2. Skip if member's write_date hasn't changed since last sync
+      3. Otherwise download, save, and update sync_meta
+    sync_meta is keyed by Odoo member ID so name changes are handled.
+    """
+    odoo_mid = str(member.get('id', ''))
     name = (member.get('name') or '').strip()
     profile_image = member.get('profileImage')
+    write_date = member.get('write_date') or member.get('__last_update') or ''
 
-    if not name or not profile_image:
+    if not name:
         return (name or '?', 'skipped', None)
 
+    # Skip obvious placeholders before downloading
+    if _is_placeholder_image(profile_image):
+        return (name, 'skipped', None)
+
     try:
+        safe_name = name.replace(' ', '_')
+        meta_key = odoo_mid or name  # Use Odoo ID as key, fall back to name
+        prev_meta = sync_meta.get(meta_key, {}) if isinstance(sync_meta.get(meta_key), dict) else {}
+        prev_write_date = prev_meta.get('write_date', sync_meta.get(meta_key, '')) if not isinstance(sync_meta.get(meta_key), dict) else prev_meta.get('write_date', '')
+        prev_name = prev_meta.get('name', '')
+
+        # Find existing files — check both current name and previous name
+        existing = [f for f in os.listdir(known_faces_dir)
+                    if f.lower().startswith(safe_name.lower())
+                    and f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+
+        # If name changed, also look for files under the old name
+        old_name_files = []
+        if prev_name and prev_name != name:
+            old_safe = prev_name.replace(' ', '_')
+            old_name_files = [f for f in os.listdir(known_faces_dir)
+                              if f.lower().startswith(old_safe.lower())
+                              and f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+
+        # Skip if write_date unchanged AND local file exists
+        if existing and write_date and prev_write_date == write_date and not old_name_files:
+            return (name, 'skipped', None)
+
         resolved = _resolve_profile_image(profile_image, odoo_base)
         if resolved is None:
             return (name, 'skipped', None)
 
         ext, image_bytes = resolved
-        safe_name = name.replace(' ', '_')
 
-        existing = [f for f in os.listdir(known_faces_dir)
-                    if f.lower().startswith(safe_name.lower())
-                    and f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-        if existing:
-            filename = f'{safe_name}_{len(existing)+1}.{ext}'
-        else:
-            filename = f'{safe_name}.{ext}'
+        # Skip if downloaded image is a placeholder (e.g. Odoo 6078-byte default)
+        if _is_placeholder_image(profile_image, image_bytes):
+            if write_date:
+                sync_meta[meta_key] = {'write_date': write_date, 'name': name}
+            return (name, 'skipped', None)
+
+        # Remove old images (current name + old name if renamed)
+        for old_file in existing + old_name_files:
+            path = os.path.join(known_faces_dir, old_file)
+            if os.path.exists(path):
+                os.remove(path)
+
+        filename = f'{safe_name}.{ext}'
         dest = os.path.join(known_faces_dir, filename)
         with open(dest, 'wb') as f:
             f.write(image_bytes)
+
+        # Record write_date + name so next sync can detect name changes
+        if write_date:
+            sync_meta[meta_key] = {'write_date': write_date, 'name': name}
 
         return (name, 'synced', None)
 
@@ -444,22 +558,67 @@ def _run_sync_background(app, odoo_base, centre_id, access_token,
                 break
             page += 1
 
+        # Filter members based on sync config (all vs selected)
+        from ..models.app_config import AppConfig
+        sync_mode = AppConfig.get('sync_mode', 'all')
+        if sync_mode == 'selected':
+            raw_ids = AppConfig.get('sync_selected_ids', '')
+            selected = {s.strip() for s in raw_ids.split(',') if s.strip()}
+            if selected:
+                all_members = [
+                    m for m in all_members
+                    if str(m.get('id', '')) in selected
+                ]
+
         total = len(all_members)
 
         # Phase 1.5: Upsert Senior records in the database
+        # Match priority: odoo_id > name (case-insensitive)
+        # Deactivate seniors not in Odoo, clean up duplicates.
         from ..models.senior import Senior
-        existing = {s.name: s for s in Senior.query.all()}
+
+        all_seniors = Senior.query.all()
+        by_odoo_id = {s.odoo_id: s for s in all_seniors if s.odoo_id}
+        by_name_lower = {}
+        for s in all_seniors:
+            key = s.name.strip().lower()
+            # Keep the one with odoo_id, or the first one
+            if key not in by_name_lower or (s.odoo_id and not by_name_lower[key].odoo_id):
+                by_name_lower[key] = s
+
+        seen_odoo_ids = set()
         for m in all_members:
+            odoo_mid = str(m.get('id', ''))
             name = (m.get('name') or '').strip()
             nric = (m.get('nricFin') or '')[-4:] or '????'
             if not name:
                 continue
-            if name in existing:
-                senior = existing[name]
+
+            # Match by Odoo ID first, then by name (case-insensitive)
+            senior = by_odoo_id.get(odoo_mid)
+            if senior is None:
+                senior = by_name_lower.get(name.lower())
+
+            if senior:
+                senior.name = name
+                senior.nric_last4 = nric
+                senior.odoo_id = odoo_mid
                 senior.is_active = True
             else:
-                senior = Senior(name=name, nric_last4=nric, is_active=True)
+                senior = Senior(
+                    odoo_id=odoo_mid, name=name,
+                    nric_last4=nric, is_active=True,
+                )
                 db.session.add(senior)
+
+            seen_odoo_ids.add(odoo_mid)
+
+        # Clean up: delete seniors without odoo_id (stale seed data or
+        # orphans from name changes). Only after a successful full sync.
+        if seen_odoo_ids:
+            for s in all_seniors:
+                if not s.odoo_id:
+                    db.session.delete(s)
         try:
             db.session.commit()
         except Exception:
@@ -475,12 +634,14 @@ def _run_sync_background(app, odoo_base, centre_id, access_token,
         })
 
         # Phase 2: Download images concurrently (8 workers)
+        sync_meta = _load_sync_meta(known_faces_dir)
         synced = 0
         skipped = 0
         with ThreadPoolExecutor(max_workers=8) as pool:
             futures = {
                 pool.submit(
-                    _download_member_face, m, odoo_base, known_faces_dir
+                    _download_member_face, m, odoo_base, known_faces_dir,
+                    sync_meta,
                 ): m
                 for m in all_members
             }
@@ -501,6 +662,9 @@ def _run_sync_background(app, odoo_base, centre_id, access_token,
                     'total': total,
                     'name': name if status == 'synced' else '',
                 })
+
+        # Persist sync metadata so next run can skip unchanged members
+        _save_sync_meta(known_faces_dir, sync_meta)
 
         # Phase 3: Reload face engine once
         if synced > 0:
@@ -529,13 +693,30 @@ def sync_known_faces_from_odoo():
       - sync_progress: {phase, synced, skipped, total, name}
       - sync_complete: {synced, skipped, total, errors}
     """
-    user = g.current_user
-    if not user.odoo_access_token:
-        return jsonify(
-            {'error': 'No Odoo access token. Please re-login.'}), 401
+    import os as _os
+    from ..models.user import User
 
-    odoo_base = current_app.config['ODOO_BASE_URL'].rstrip('/')
-    centre_id = current_app.config['ODOO_CENTRE_ID']
+    user = g.current_user
+    access_token = user.odoo_access_token
+
+    # In dev mode, fall back to any available Odoo token (e.g. from a
+    # previous Odoo login session) so sync works without re-authenticating.
+    if not access_token and _os.environ.get('FLASK_ENV') == 'development':
+        other = User.query.filter(
+            User.odoo_access_token.isnot(None),
+            User.odoo_access_token != '',
+        ).first()
+        if other:
+            access_token = other.odoo_access_token
+
+    if not access_token:
+        return jsonify(
+            {'error': 'No Odoo access token. Please log in with Odoo credentials first.'}), 403
+
+    from .app_config import get_odoo_config
+    odoo_cfg = get_odoo_config()
+    odoo_base = odoo_cfg['odoo_base_url'].rstrip('/')
+    centre_id = odoo_cfg['odoo_centre_id']
     data_dir = current_app.config['FACE_DATA_DIR']
     known_faces_dir = os.path.join(data_dir, 'known_faces')
     os.makedirs(known_faces_dir, exist_ok=True)
@@ -544,7 +725,7 @@ def sync_known_faces_from_odoo():
 
     thread = threading.Thread(
         target=_run_sync_background,
-        args=(app, odoo_base, centre_id, user.odoo_access_token,
+        args=(app, odoo_base, centre_id, access_token,
               known_faces_dir),
         daemon=True,
     )

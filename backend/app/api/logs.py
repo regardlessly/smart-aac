@@ -1,13 +1,16 @@
 """System log API — streams backend log file to the frontend."""
 
 import os
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from .auth import login_required
 
 bp = Blueprint('logs', __name__)
 
-BACKEND_LOG = '/tmp/smart-aac-backend.log'
-FRONTEND_LOG = '/tmp/smart-aac-frontend.log'
+import tempfile as _tempfile
+
+_log_dir = _tempfile.gettempdir()  # /tmp on Linux/Mac, %TEMP% on Windows
+BACKEND_LOG = os.path.join(_log_dir, 'smart-aac-backend.log')
+FRONTEND_LOG = os.path.join(_log_dir, 'smart-aac-frontend.log')
 
 
 def _read_log(path: str, lines: int = 200) -> list[str]:
@@ -51,6 +54,10 @@ def frontend_log():
 def camera_status():
     """Return camera worker status from the face recognition service."""
     try:
+        # If camera worker is disabled, report stopped immediately
+        if not current_app.config.get('CAMERA_WORKER_ENABLED', False):
+            return jsonify({'status': 'stopped', 'details': 'Camera worker is disabled (CAMERA_WORKER_ENABLED=false)', 'running': False})
+
         from ..services.face_recognition_service import FaceRecognitionService
         instance = FaceRecognitionService._instance
         running = FaceRecognitionService._running

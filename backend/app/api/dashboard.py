@@ -82,8 +82,10 @@ def get_dashboard():
     user = g.current_user
     if user and user.odoo_access_token:
         try:
-            odoo_base = current_app.config['ODOO_BASE_URL'].rstrip('/')
-            centre_id = current_app.config['ODOO_CENTRE_ID']
+            from .app_config import get_odoo_config
+            odoo_cfg = get_odoo_config()
+            odoo_base = odoo_cfg['odoo_base_url'].rstrip('/')
+            centre_id = odoo_cfg['odoo_centre_id']
             resp = http_requests.get(
                 f'{odoo_base}/centre_ops/aac_activities',
                 params={'period': 'today', 'centre_id': centre_id},

@@ -222,4 +222,33 @@ export const api = {
     return apiFetch<import('./types').MemberPeersData>(
       `/api/reports/member/${id}/peers${q ? '?' + q : ''}`)
   },
+
+  // ── Alert Config ──
+  getAlertConfig: () =>
+    apiFetch<{ alert_unidentified: boolean }>('/api/config/alerts'),
+  updateAlertConfig: (data: { alert_unidentified?: boolean }) =>
+    apiFetch<{ status: string; updated: Record<string, boolean> }>('/api/config/alerts', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // ── Sync Config ──
+  getSyncConfig: () =>
+    apiFetch<{ sync_mode: string; sync_selected_ids: string }>('/api/config/sync'),
+  updateSyncConfig: (data: { sync_mode?: string; sync_selected_ids?: string }) =>
+    apiFetch<{ status: string; updated: Record<string, string> }>('/api/config/sync', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // ── Odoo Config ──
+  getOdooConfig: () => {
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+    return fetch(`${API_BASE}/api/config/odoo`).then(r => r.json()) as Promise<import('./types').OdooConfig>
+  },
+  updateOdooConfig: (data: Partial<import('./types').OdooConfig>) =>
+    apiFetch<{ status: string; updated: Record<string, string> }>('/api/config/odoo', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 }

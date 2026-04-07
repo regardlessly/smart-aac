@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import Panel from '@/components/ui/Panel'
+import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
 import type { Camera, Room } from '@/lib/types'
 
@@ -52,6 +53,24 @@ export default function SettingsPage() {
   const [savingSys, setSavingSys] = useState(false)
   const [sysEditing, setSysEditing] = useState(false)
 
+  // Alert config state
+  const [alertUnidentified, setAlertUnidentified] = useState(true)
+  const [savingAlert, setSavingAlert] = useState(false)
+
+  // Sync config state
+  const [syncMode, setSyncMode] = useState<'all' | 'selected'>('all')
+  const [syncSelectedIds, setSyncSelectedIds] = useState('')
+  const [savingSync, setSavingSync] = useState(false)
+
+  // Odoo config state
+  const [odooUrl, setOdooUrl] = useState('')
+  const [odooDb, setOdooDb] = useState('')
+  const [odooCentre, setOdooCentre] = useState('')
+  const [savingOdoo, setSavingOdoo] = useState(false)
+
+  // Known faces / embeddings state
+  const [knownFaces, setKnownFaces] = useState<{ name: string; image_count: number; embedding_count: number }[]>([])
+
   // Clear data state
   const [clearing, setClearing] = useState(false)
   const [clearConfirm, setClearConfirm] = useState(false)
@@ -80,11 +99,98 @@ export default function SettingsPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const connected = false
+  // Fetch known faces / embedding stats (auto-refresh hourly)
+  const fetchKnownFaces = useCallback(async () => {
+    try {
+      const data = await api.knownFaces()
+      setKnownFaces(data as { name: string; image_count: number; embedding_count: number }[])
+    } catch { /* silent */ }
+  }, [])
+
+  useEffect(() => {
+    fetchKnownFaces()
+    const interval = setInterval(fetchKnownFaces, 60 * 60 * 1000) // every hour
+    return () => clearInterval(interval)
+  }, [fetchKnownFaces])
+
+  useEffect(() => {
+    api.getAlertConfig().then(cfg => {
+      setAlertUnidentified(cfg.alert_unidentified)
+    }).catch(() => {})
+    api.getSyncConfig().then(cfg => {
+      setSyncMode(cfg.sync_mode as 'all' | 'selected')
+      setSyncSelectedIds(cfg.sync_selected_ids)
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    api.getOdooConfig().then(cfg => {
+      setOdooUrl(cfg.odoo_base_url)
+      setOdooDb(cfg.odoo_db_name)
+      setOdooCentre(cfg.odoo_centre_id)
+    }).catch(() => {})
+  }, [])
+
+  const { connected } = useSSE()
 
   const showMessage = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type })
     setTimeout(() => setMessage(null), 4000)
+  }
+
+  // ── Alert Config ─────────────────────────────────────────
+
+  const handleToggleAlertUnidentified = async () => {
+    const newVal = !alertUnidentified
+    setAlertUnidentified(newVal)
+    setSavingAlert(true)
+    try {
+      await api.updateAlertConfig({ alert_unidentified: newVal })
+      showMessage(
+        newVal ? 'Unidentified person alerts enabled.' : 'Unidentified person alerts disabled.',
+        'success',
+      )
+    } catch (e) {
+      setAlertUnidentified(!newVal) // revert
+      showMessage(e instanceof Error ? e.message : 'Failed to save', 'error')
+    } finally {
+      setSavingAlert(false)
+    }
+  }
+
+  // ── Sync Config ──────────────────────────────────────────
+
+  const handleSaveSync = async () => {
+    setSavingSync(true)
+    try {
+      await api.updateSyncConfig({
+        sync_mode: syncMode,
+        sync_selected_ids: syncSelectedIds,
+      })
+      showMessage('Sync settings saved.', 'success')
+    } catch (e) {
+      showMessage(e instanceof Error ? e.message : 'Failed to save', 'error')
+    } finally {
+      setSavingSync(false)
+    }
+  }
+
+  // ── Odoo Config ──────────────────────────────────────────
+
+  const handleSaveOdoo = async () => {
+    setSavingOdoo(true)
+    try {
+      await api.updateOdooConfig({
+        odoo_base_url: odooUrl,
+        odoo_db_name: odooDb,
+        odoo_centre_id: odooCentre,
+      })
+      showMessage('Odoo connection settings saved.', 'success')
+    } catch (e) {
+      showMessage(e instanceof Error ? e.message : 'Failed to save', 'error')
+    } finally {
+      setSavingOdoo(false)
+    }
   }
 
   // ── Camera CRUD ──────────────────────────────────────────
@@ -322,6 +428,205 @@ export default function SettingsPage() {
               {message.text}
             </div>
           )}
+
+          {/* ── Alert Settings ─────────────────────────── */}
+          <Panel
+            title="Alert Settings"
+            subtitle="Configure when alerts are triggered"
+          >
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-text">Unidentified Person Alerts</div>
+                  <div className="text-xs text-muted mt-0.5">
+                    Create a warning alert when the camera detects someone not in the known faces database
+                  </div>
+                </div>
+                <button
+                  onClick={handleToggleAlertUnidentified}
+                  disabled={savingAlert}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    alertUnidentified ? 'bg-teal' : 'bg-gray-300 dark:bg-gray-600'
+                  } disabled:opacity-50`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    alertUnidentified ? 'translate-x-5' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+            </div>
+          </Panel>
+
+          {/* ── Face Recognition Stats ──────────────────── */}
+          <Panel
+            title="Face Recognition"
+            subtitle={`${knownFaces.length} member${knownFaces.length !== 1 ? 's' : ''} enrolled`}
+            action={
+              <button
+                onClick={fetchKnownFaces}
+                className="text-xs text-teal hover:underline"
+              >
+                Refresh
+              </button>
+            }
+          >
+            {knownFaces.length === 0 ? (
+              <div className="p-4 text-sm text-muted">
+                No known faces enrolled. Sync from Odoo to download member photos.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-xs text-muted">
+                      <th className="px-4 py-2 font-medium">Member</th>
+                      <th className="px-4 py-2 font-medium text-center">Embeddings</th>
+                      <th className="px-4 py-2 font-medium text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {knownFaces.map((face) => (
+                      <tr key={face.name} className="border-b border-border/50 hover:bg-surface/50">
+                        <td className="px-4 py-2.5 text-text font-medium">
+                          {face.name.replace(/_/g, ' ')}
+                        </td>
+                        <td className="px-4 py-2.5 text-center text-muted">
+                          {face.embedding_count}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {face.embedding_count >= 5 ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green/10 text-green">Strong</span>
+                          ) : face.embedding_count >= 2 ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600">Learning</span>
+                          ) : face.embedding_count >= 1 ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500">Basic</span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-500">No face</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="px-4 py-2 text-xs text-muted">
+                  Auto-refreshes every hour. Embeddings increase as the camera captures more angles.
+                </div>
+              </div>
+            )}
+          </Panel>
+
+          {/* ── Sync Filter ────────────────────────────── */}
+          <Panel
+            title="Member Sync Filter"
+            subtitle="Control which members are synced from Odoo"
+          >
+            <div className="p-4 space-y-4">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="syncMode"
+                    checked={syncMode === 'all'}
+                    onChange={() => setSyncMode('all')}
+                    className="accent-teal"
+                  />
+                  <span className="text-sm text-text">Sync all members</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="syncMode"
+                    checked={syncMode === 'selected'}
+                    onChange={() => setSyncMode('selected')}
+                    className="accent-teal"
+                  />
+                  <span className="text-sm text-text">Selected members only</span>
+                </label>
+              </div>
+
+              {syncMode === 'selected' && (
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">
+                    Odoo Member IDs (comma-separated)
+                  </label>
+                  <textarea
+                    value={syncSelectedIds}
+                    onChange={(e) => setSyncSelectedIds(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
+                               placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal
+                               font-mono"
+                    placeholder="e.g. 261, 145, 302"
+                  />
+                  <p className="text-xs text-muted mt-1">
+                    Enter the Odoo member IDs of seniors to include in the sync.
+                    Only these members will have their profiles and face images downloaded.
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={handleSaveSync}
+                disabled={savingSync}
+                className="px-4 py-2 bg-teal hover:bg-teal-dark text-white text-sm font-medium rounded-lg
+                           transition-colors disabled:opacity-50"
+              >
+                {savingSync ? 'Saving\u2026' : 'Save Sync Settings'}
+              </button>
+            </div>
+          </Panel>
+
+          {/* ── Odoo Connection ───────────────────────── */}
+          <Panel
+            title="Odoo Connection"
+            subtitle="Backend server for authentication and activities"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-muted mb-1">Odoo Base URL</label>
+                <input
+                  type="url"
+                  value={odooUrl}
+                  onChange={(e) => setOdooUrl(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
+                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                  placeholder="https://odoo.example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Database Name</label>
+                <input
+                  type="text"
+                  value={odooDb}
+                  onChange={(e) => setOdooDb(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
+                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                  placeholder="mydb"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Centre ID</label>
+                <input
+                  type="text"
+                  value={odooCentre}
+                  onChange={(e) => setOdooCentre(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text
+                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                  placeholder="9"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <button
+                  onClick={handleSaveOdoo}
+                  disabled={savingOdoo}
+                  className="px-4 py-2 bg-teal hover:bg-teal-dark text-white text-sm font-medium rounded-lg
+                             transition-colors disabled:opacity-50"
+                >
+                  {savingOdoo ? 'Saving\u2026' : 'Save Connection'}
+                </button>
+              </div>
+            </div>
+          </Panel>
 
           {/* ── Room Configuration ──────────────────────── */}
           <Panel

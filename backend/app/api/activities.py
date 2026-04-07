@@ -9,16 +9,26 @@ bp = Blueprint('activities', __name__)
 @bp.route('/api/activities')
 @login_required
 def list_activities():
-    """Proxy to Odoo aac_activities endpoint."""
-    period = request.args.get('period', 'today')
+    """Proxy to Odoo aac_activities endpoint, or serve from local DB in dev."""
+    import os
+    from ..models.activity import Activity
 
     user = g.current_user
     access_token = user.odoo_access_token
-    if not access_token:
-        return jsonify({'error': 'No Odoo access token. Please re-login.'}), 401
 
-    odoo_base = current_app.config['ODOO_BASE_URL'].rstrip('/')
-    centre_id = current_app.config['ODOO_CENTRE_ID']
+    # Dev/offline fallback: serve from local DB when no Odoo token
+    if not access_token and os.environ.get('FLASK_ENV') == 'development':
+        activities = Activity.query.order_by(Activity.scheduled_time).all()
+        return jsonify({'activities': [a.to_dict() for a in activities]})
+
+    if not access_token:
+        return jsonify({'error': 'No Odoo access token. Please re-login.'}), 403
+
+    period = request.args.get('period', 'today')
+    from .app_config import get_odoo_config
+    odoo_cfg = get_odoo_config()
+    odoo_base = odoo_cfg['odoo_base_url'].rstrip('/')
+    centre_id = odoo_cfg['odoo_centre_id']
 
     try:
         resp = http_requests.get(

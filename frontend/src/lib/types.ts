@@ -371,6 +371,14 @@ export interface DailyAttendanceData {
   summary: DailyAttendanceSummary
 }
 
+// ── Odoo Config ──
+
+export interface OdooConfig {
+  odoo_base_url: string
+  odoo_db_name: string
+  odoo_centre_id: string
+}
+
 export interface FRStatus {
   status: 'running' | 'stopped' | 'error'
   uptime_seconds?: number

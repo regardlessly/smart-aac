@@ -229,10 +229,12 @@ class FaceRecognitionService:
                 PresenceService.update_from_face_results(
                     [face_result], camera, db.session)
 
-                # Alert for unknowns
+                # Alert for unknowns (if enabled in settings)
                 if not is_known:
-                    AlertService.create_stranger_alert(
-                        camera, 1, db.session)
+                    from ..models.app_config import AppConfig
+                    if AppConfig.get('alert_unidentified', 'true') == 'true':
+                        AlertService.create_stranger_alert(
+                            camera, 1, db.session)
 
                 db.session.commit()
 

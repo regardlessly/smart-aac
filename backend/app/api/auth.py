@@ -81,15 +81,17 @@ def login():
         return jsonify({'error': 'Email and password are required'}), 400
 
     # Proxy login to Odoo
-    odoo_url = current_app.config['ODOO_BASE_URL'].rstrip('/')
+    from .app_config import get_odoo_config
+    odoo_cfg = get_odoo_config()
+    odoo_url = odoo_cfg['odoo_base_url'].rstrip('/')
     try:
         resp = http_requests.post(
             f'{odoo_url}/centre_ops/login',
             data={
-                'db': current_app.config['ODOO_DB_NAME'],
+                'db': odoo_cfg['odoo_db_name'],
                 'login': email,
                 'password': password,
-                'centre_id': current_app.config['ODOO_CENTRE_ID'],
+                'centre_id': odoo_cfg['odoo_centre_id'],
             },
             timeout=15,
         )

@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
+import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
 import type { AacActivity, AacActivitySlot } from '@/lib/types'
 
 export default function ActivitiesPage() {
+  const { connected } = useSSE()
   const [activities, setActivities] = useState<AacActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +68,7 @@ export default function ActivitiesPage() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 ml-60 overflow-y-auto">
-        <TopBar connected={false} />
+        <TopBar connected={connected} />
         <main className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>

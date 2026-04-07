@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import TopBar from '@/components/layout/TopBar'
 import Panel from '@/components/ui/Panel'
 import StatCard from '@/components/dashboard/StatCard'
+import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
 import type { Room, RoomOccupancyData } from '@/lib/types'
 
@@ -24,6 +25,7 @@ const OccupancyChart = dynamic(
 type RangeKey = 'week' | 'month'
 
 export default function ReportsPage() {
+  const { connected } = useSSE()
   const [rooms, setRooms] = useState<Room[]>([])
   const [data, setData] = useState<RoomOccupancyData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -79,7 +81,7 @@ export default function ReportsPage() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 ml-60 overflow-y-auto">
-        <TopBar connected={false} />
+        <TopBar connected={connected} />
         <main className="p-6 space-y-6">
           {/* Report Tabs */}
           <div className="flex items-center gap-1 border-b border-border">
