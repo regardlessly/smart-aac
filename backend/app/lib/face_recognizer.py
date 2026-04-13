@@ -321,7 +321,7 @@ class FaceRecognitionEngine:
                 embedding = face.normed_embedding
 
                 # Filter very small faces
-                if w < 15 or h < 15:
+                if w < 30 or h < 30:
                     continue
 
                 # Compare against known faces — use best similarity per person
@@ -604,7 +604,7 @@ def annotate_frame(frame, face_results, camera_name='Camera',
 
 
 def auto_learn_face(frame, face_result, known_faces_dir, engine,
-                    max_per_person=15, auto_learn_threshold=0.35):
+                    max_per_person=15, auto_learn_threshold=0.50):
     """
     Save a high-confidence CCTV face crop as training data.
     Only saves if the similarity score is well above the recognition threshold
@@ -1559,7 +1559,7 @@ class FaceRecognizer:
                  on_person_detected=None, confidence_threshold=0.35,
                  capture_interval=2, analyse_every=5,
                  det_size=(640, 640), output_dir=None,
-                 auto_learn=True, auto_learn_threshold=0.35,
+                 auto_learn=True, auto_learn_threshold=0.50,
                  max_auto_learn_per_person=15,
                  save_captures=True):
         """
@@ -2097,7 +2097,7 @@ def analyse_batch(batch_frames, batch_timestamps, engine,
                         fy1_full = fy1 + offset_y
                         w = (fx2 + offset_x) - fx1_full
                         h = (fy2 + offset_y) - fy1_full
-                        if w < 15 or h < 15:
+                        if w < 30 or h < 30:
                             continue
                         embedding = face.normed_embedding
                         det_conf = float(face.det_score)

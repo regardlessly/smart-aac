@@ -134,18 +134,20 @@ export default function CCTVPage() {
       }, ...prev].slice(0, 50))
     }
     if (event.type === 'snapshot' && !snapThrottleRef.current) {
-      api.latestSnapshots().then(s => { setSnapshots(s); setLastUpdated(new Date()) }).catch(() => {})
+      // Delay slightly so all cameras in the batch have time to save
+      setTimeout(() => {
+        api.latestSnapshots().then(s => { setSnapshots(s); setLastUpdated(new Date()) }).catch(() => {})
+      }, 2000)
       snapThrottleRef.current = setTimeout(() => {
         snapThrottleRef.current = null
-      }, 5000)
+      }, 8000)
     }
   }, [])
 
   const { connected } = useSSE(handleSSE)
 
-  // Only poll when SSE is disconnected; 30s fallback
+  // Poll every 10s to ensure all cameras stay fresh
   useEffect(() => {
-    if (connected) return
     const interval = setInterval(async () => {
       try {
         const [cams, st, snaps] = await Promise.all([
@@ -162,7 +164,7 @@ export default function CCTVPage() {
         // silent
       }
       fetchDetections()
-    }, 30000)
+    }, 10000)
     return () => clearInterval(interval)
   }, [fetchDetections, connected])
 
