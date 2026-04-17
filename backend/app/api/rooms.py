@@ -28,81 +28,90 @@ def get_room(room_id):
 @bp.route('/api/rooms/heatmap')
 @login_required
 def heatmap():
-    """Return room occupancy heatmap from latest camera snapshots.
+    """Return room occupancy heatmap with cross-camera deduplication.
 
-    Deduplicates identified persons across cameras in the same room
-    using the identified_names list stored in each snapshot.
-    Strangers: max(unidentified_count) across cameras in the room
-    (the same stranger may appear in multiple camera views).
+    Uses face embeddings to match the same stranger across multiple
+    cameras in the same room, giving a more accurate person count
+    than simply taking MAX(unidentified) across cameras.
     """
-    import json as _json
-    from sqlalchemy import func
-    from ..models.camera import Camera, CCTVSnapshot
+    from ..models.camera import Camera
+    from ..services.face_recognition_service import FaceRecognitionService
 
-    # Latest snapshot per camera
-    latest_snap = db.session.query(
-        CCTVSnapshot.camera_id,
-        func.max(CCTVSnapshot.id).label('max_id'),
-    ).group_by(CCTVSnapshot.camera_id).subquery()
-
-    # Fetch latest snapshots with room info
-    rows = db.session.query(
-        Camera.room_id,
-        CCTVSnapshot.identified_count,
-        CCTVSnapshot.unidentified_count,
-        CCTVSnapshot.identified_names,
-    ).join(
-        latest_snap, Camera.id == latest_snap.c.camera_id
-    ).join(
-        CCTVSnapshot, CCTVSnapshot.id == latest_snap.c.max_id
-    ).filter(
-        Camera.room_id.isnot(None),
+    # Build room -> camera names mapping
+    cameras = Camera.query.filter(
+        Camera.room_id.isnot(None), Camera.enabled.is_(True)
     ).all()
-
-    # Per-room: collect per-camera data for cross-camera deduplication
-    # Each entry: (identified_names_set, unidentified_count)
-    room_camera_data: dict[int, list[tuple[set, int]]] = {}
-    room_all_names: dict[int, set] = {}
-    for room_id, id_count, unid_count, names_json in rows:
-        if names_json:
-            try:
-                names = set(_json.loads(names_json))
-            except (ValueError, TypeError):
-                names = set()
-        else:
-            names = set()
-        room_camera_data.setdefault(room_id, []).append(
-            (names, unid_count or 0))
-        room_all_names.setdefault(room_id, set()).update(names)
+    room_cameras: dict[int, list[str]] = {}
+    for cam in cameras:
+        room_cameras.setdefault(cam.room_id, []).append(cam.name)
 
     rooms = Room.query.order_by(Room.id).all()
     result = []
     for room in rooms:
-        all_names = room_all_names.get(room.id, set())
-        known = len(all_names)
-        # Adjust stranger count: a stranger on one camera might be a
-        # person identified by another camera. For each camera, subtract
-        # the number of people identified elsewhere but not on this camera.
-        strangers = 0
-        for cam_names, cam_strangers in room_camera_data.get(
-                room.id, []):
-            identified_elsewhere = len(all_names - cam_names)
-            adjusted = max(0, cam_strangers - identified_elsewhere)
-            strangers = max(strangers, adjusted)
-        occ = known + strangers
-        # Use the model's threshold logic
-        room.current_occupancy = occ   # temp set for color calc
+        cam_names = room_cameras.get(room.id, [])
+        if cam_names:
+            occ = FaceRecognitionService.get_room_occupancy(cam_names)
+            known = occ['identified']
+            strangers = occ['strangers']
+            face_total = occ['total']
+            body_max = occ['person_count_max']
+            # Use the higher of face dedup count and YOLO body count
+            total = max(face_total, body_max)
+        else:
+            known = 0
+            strangers = 0
+            body_max = 0
+            total = 0
+
+        room.current_occupancy = total
         result.append({
             'id': room.id,
             'name': room.name,
-            'occupancy': occ,
+            'occupancy': total,
             'max_capacity': room.max_capacity,
             'moderate_threshold': room.moderate_threshold,
             'identified': known,
             'strangers': strangers,
-            'color_level': room._get_color_level(occ),
+            'color_level': room._get_color_level(total),
         })
 
+    return jsonify(result)
+
+
+@bp.route('/api/rooms/occupancy-debug')
+def occupancy_debug():
+    """Temporary debug: show cross-camera dedup results (no auth)."""
+    from ..models.camera import Camera
+    from ..services.face_recognition_service import FaceRecognitionService as FRS
+
+    cameras = Camera.query.filter(
+        Camera.room_id.isnot(None), Camera.enabled.is_(True)
+    ).all()
+    room_cameras: dict[int, list[str]] = {}
+    for cam in cameras:
+        room_cameras.setdefault(cam.room_id, []).append(cam.name)
+
+    rooms = Room.query.order_by(Room.id).all()
+    result = []
+    for room in rooms:
+        cam_names = room_cameras.get(room.id, [])
+        if cam_names:
+            occ = FRS.get_room_occupancy(cam_names)
+            # Also show raw per-camera data
+            raw = {}
+            for cn in cam_names:
+                d = FRS._camera_face_data.get(cn, {})
+                raw[cn] = {
+                    'persons': d.get('person_count', 0),
+                    'strangers_with_face': len(d.get('stranger_embeddings', [])),
+                    'identified': d.get('identified', []),
+                }
+            result.append({
+                'room': room.name,
+                'cameras': cam_names,
+                'raw_per_camera': raw,
+                'deduped': occ,
+            })
     return jsonify(result)
 
 

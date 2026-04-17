@@ -6,7 +6,7 @@ import TopBar from '@/components/layout/TopBar'
 import Panel from '@/components/ui/Panel'
 import { useSSE } from '@/hooks/useSSE'
 import { api } from '@/lib/api'
-import type { Camera, CCTVSnapshot, FRStatus, SSEEvent } from '@/lib/types'
+import type { Camera, CCTVSnapshot, FRStatus, RoomHeatmap, RosterMember, SSEEvent } from '@/lib/types'
 
 interface DetectionItem {
   id: number
@@ -46,7 +46,20 @@ export default function CCTVPage() {
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [selectedCam, setSelectedCam] = useState<Camera | null>(null)
+  const [heatmap, setHeatmap] = useState<RoomHeatmap[]>([])
   const nextId = useRef(0)
+
+  // Enrollment state
+  const [enrollOpen, setEnrollOpen] = useState(false)
+  const [enrollCamId, setEnrollCamId] = useState<number | null>(null)
+  const [enrollPerson, setEnrollPerson] = useState('')
+  const [enrolling, setEnrolling] = useState(false)
+  const [enrollCrops, setEnrollCrops] = useState<string[]>([])
+  const [enrollMsg, setEnrollMsg] = useState('')
+  const [enrollResult, setEnrollResult] = useState<{ saved: number; person: string } | null>(null)
+  const [members, setMembers] = useState<RosterMember[]>([])
+  const enrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [enrollCountdown, setEnrollCountdown] = useState(0)
 
   // Track SSE detection IDs so polled data doesn't overwrite SSE data (which has crops)
   const sseDetectionIds = useRef(new Set<string>())
@@ -54,14 +67,16 @@ export default function CCTVPage() {
   // Fetch initial data
   const fetchData = useCallback(async () => {
     try {
-      const [cams, snaps, st] = await Promise.all([
+      const [cams, snaps, st, hm] = await Promise.all([
         api.cameras(),
         api.latestSnapshots(),
         api.cctvStatus(),
+        api.heatmap(),
       ])
       setCameras(cams)
       setSnapshots(snaps)
       setStatus(st)
+      setHeatmap(hm)
       setError(null)
       setLastUpdated(new Date())
     } catch (e) {
@@ -142,6 +157,26 @@ export default function CCTVPage() {
         snapThrottleRef.current = null
       }, 8000)
     }
+    // Enrollment SSE events
+    if (event.type === 'enrollment_progress') {
+      const crop = (event as Record<string, unknown>).face_crop_b64 as string | undefined
+      if (crop) setEnrollCrops(prev => [...prev, crop])
+      setEnrollMsg((event as Record<string, unknown>).message as string || '')
+    }
+    if (event.type === 'enrollment_complete') {
+      const ev = event as Record<string, unknown>
+      setEnrolling(false)
+      setEnrollResult({ saved: (ev.saved as number) || 0, person: (ev.person as string) || '' })
+      if (enrollTimerRef.current) { clearInterval(enrollTimerRef.current); enrollTimerRef.current = null }
+    }
+    if (event.type === 'enrollment_error') {
+      setEnrollMsg((event as Record<string, unknown>).message as string || 'Enrollment error')
+    }
+    if (event.type === 'enrollment_cancelled') {
+      setEnrolling(false)
+      setEnrollMsg('Enrolment cancelled')
+      if (enrollTimerRef.current) { clearInterval(enrollTimerRef.current); enrollTimerRef.current = null }
+    }
   }, [])
 
   const { connected } = useSSE(handleSSE)
@@ -150,14 +185,16 @@ export default function CCTVPage() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const [cams, st, snaps] = await Promise.all([
+        const [cams, st, snaps, hm] = await Promise.all([
           api.cameras(),
           api.cctvStatus(),
           api.latestSnapshots(),
+          api.heatmap(),
         ])
         setCameras(cams)
         setStatus(st)
         setSnapshots(snaps)
+        setHeatmap(hm)
         setError(null)
         setLastUpdated(new Date())
       } catch {
@@ -189,6 +226,12 @@ export default function CCTVPage() {
       return a.localeCompare(b)
     })
   }, [cameras])
+
+  // Room name -> occupancy data
+  const roomOccupancy = useMemo(
+    () => new Map(heatmap.map(h => [h.name, h])),
+    [heatmap]
+  )
 
   if (loading) {
     return (
@@ -226,6 +269,7 @@ export default function CCTVPage() {
   }
 
   return (
+    <>
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 ml-60 overflow-y-auto">
@@ -246,15 +290,30 @@ export default function CCTVPage() {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <div className={`w-2.5 h-2.5 rounded-full ${
-                isRunning ? 'bg-green animate-pulse-dot' : 'bg-gray-400'
-              }`} />
-              <span className={`text-sm font-medium ${
-                isRunning ? 'text-green' : 'text-muted'
-              }`}>
-                {isRunning ? 'System Active' : 'System Offline'}
-              </span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setEnrollOpen(true)
+                  setEnrollResult(null)
+                  setEnrollCrops([])
+                  setEnrollMsg('')
+                  setEnrolling(false)
+                  api.roster().then(setMembers).catch(() => {})
+                }}
+                className="px-3 py-1.5 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Enroll Face
+              </button>
+              <div className="flex items-center gap-2">
+                <div className={`w-2.5 h-2.5 rounded-full ${
+                  isRunning ? 'bg-green animate-pulse-dot' : 'bg-gray-400'
+                }`} />
+                <span className={`text-sm font-medium ${
+                  isRunning ? 'text-green' : 'text-muted'
+                }`}>
+                  {isRunning ? 'System Active' : 'System Offline'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -266,6 +325,19 @@ export default function CCTVPage() {
                 <span className="text-xs text-muted bg-surface px-2 py-0.5 rounded-full">
                   {roomCameras.length} camera{roomCameras.length !== 1 ? 's' : ''}
                 </span>
+                {(() => {
+                  const occ = roomOccupancy.get(roomName)
+                  if (!occ || occ.occupancy === 0) return null
+                  return (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      occ.color_level === 'high' ? 'bg-coral/10 text-coral'
+                      : occ.color_level === 'medium' ? 'bg-orange/10 text-orange'
+                      : 'bg-green/10 text-green'
+                    }`}>
+                      {occ.occupancy} pax
+                    </span>
+                  )
+                })()}
               </div>
               <div className={`grid gap-4 ${
                 roomCameras.length <= 2 ? 'grid-cols-1 sm:grid-cols-2'
@@ -636,6 +708,226 @@ export default function CCTVPage() {
         </main>
       </div>
     </div>
+
+      {/* ── Enrollment Modal ─────────────────────────── */}
+      {enrollOpen && (
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: '16px' }}
+        >
+          <div
+            style={{ width: '520px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px' }}
+            className="bg-panel border border-border"
+          >
+            <div className="p-6 space-y-5">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-text">Face Enrollment</h2>
+                  <p className="text-xs text-muted mt-0.5">Capture face from CCTV camera</p>
+                </div>
+                <button
+                  onClick={() => { setEnrollOpen(false); if (enrolling) api.cancelEnrollment().catch(() => {}) }}
+                  className="text-muted hover:text-text text-xl"
+                >&#10005;</button>
+              </div>
+
+              {!enrolling && !enrollResult && (
+                <>
+                  {/* Camera selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1">Camera</label>
+                    <select
+                      value={enrollCamId ?? ''}
+                      onChange={e => setEnrollCamId(Number(e.target.value) || null)}
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text"
+                    >
+                      <option value="">Select camera...</option>
+                      {cameras.filter(c => c.enabled).map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}{c.room_name ? ` — ${c.room_name}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Person selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1">Senior Name</label>
+                    <select
+                      value={enrollPerson}
+                      onChange={e => setEnrollPerson(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text"
+                    >
+                      <option value="">Select senior...</option>
+                      {members.map((m, idx) => (
+                        <option key={`${m.id}-${idx}`} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Live camera preview */}
+                  {enrollCamId && (() => {
+                    const snap = snapshotMap.get(enrollCamId)
+                    return snap?.snapshot_b64 ? (
+                      <div className="rounded-lg overflow-hidden border border-border">
+                        <img
+                          src={`data:image/jpeg;base64,${snap.snapshot_b64}`}
+                          alt="Camera preview"
+                          className="w-full"
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-border bg-surface p-8 text-center text-sm text-muted">
+                        Camera preview loading...
+                      </div>
+                    )
+                  })()}
+
+                  {/* Instructions */}
+                  <div className="bg-surface rounded-lg p-3 text-xs text-muted space-y-1">
+                    <p className="font-medium text-text">Instructions:</p>
+                    <p>1. Only the senior should be in the room (close the door)</p>
+                    <p>2. Stand 2-3 metres from camera, <b>facing the camera</b></p>
+                    <p>3. When capture starts, slowly turn head:</p>
+                    <p className="pl-3">Look at camera &rarr; turn left &rarr; back to center &rarr; turn right &rarr; look up &rarr; look down</p>
+                    <p>4. Capture takes ~15 seconds</p>
+                  </div>
+
+                  {/* Start button */}
+                  <button
+                    onClick={async () => {
+                      if (!enrollCamId || !enrollPerson) return
+                      setEnrolling(true)
+                      setEnrollCrops([])
+                      setEnrollMsg('')
+                      setEnrollCountdown(15)
+                      enrollTimerRef.current = setInterval(() => {
+                        setEnrollCountdown(prev => {
+                          if (prev <= 1) {
+                            if (enrollTimerRef.current) clearInterval(enrollTimerRef.current)
+                            return 0
+                          }
+                          return prev - 1
+                        })
+                      }, 1000)
+                      try {
+                        await api.startEnrollment(enrollCamId, enrollPerson, 15)
+                      } catch {
+                        setEnrolling(false)
+                        setEnrollMsg('Failed to start enrollment')
+                        if (enrollTimerRef.current) clearInterval(enrollTimerRef.current)
+                      }
+                    }}
+                    disabled={!enrollCamId || !enrollPerson}
+                    className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-lg
+                               transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Start Enrollment
+                  </button>
+                </>
+              )}
+
+              {enrolling && (
+                <>
+                  {/* Live camera feed */}
+                  {enrollCamId && (() => {
+                    const snap = snapshotMap.get(enrollCamId)
+                    return snap?.snapshot_b64 ? (
+                      <div className="rounded-lg overflow-hidden border border-border relative">
+                        <img
+                          src={`data:image/jpeg;base64,${snap.snapshot_b64}`}
+                          alt="Live feed"
+                          className="w-full"
+                        />
+                        <div className="absolute top-2 right-2 bg-black/70 text-white text-sm font-bold px-3 py-1 rounded-lg">
+                          {enrollCountdown}s
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/30">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${Math.min(100, (enrollCrops.length / 8) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null
+                  })()}
+
+                  {/* Progress info */}
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-muted">Capturing faces for <span className="font-medium text-text">{enrollPerson}</span></p>
+                    <p className="text-xs text-muted">{enrollCrops.length} face{enrollCrops.length !== 1 ? 's' : ''} captured — face the camera, slowly turn head left, right, up, down</p>
+                    {enrollMsg && (
+                      <p className="text-xs text-orange">{enrollMsg}</p>
+                    )}
+                  </div>
+
+                  {/* Face crop thumbnails */}
+                  {enrollCrops.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2">
+                      {enrollCrops.map((crop, i) => (
+                        <img
+                          key={i}
+                          src={`data:image/jpeg;base64,${crop}`}
+                          alt={`Crop ${i + 1}`}
+                          className="w-full aspect-square object-cover rounded-lg border border-border"
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Cancel button */}
+                  <button
+                    onClick={async () => {
+                      try { await api.cancelEnrollment() } catch {}
+                      setEnrolling(false)
+                      if (enrollTimerRef.current) clearInterval(enrollTimerRef.current)
+                    }}
+                    className="w-full py-2 bg-surface hover:bg-border text-text text-sm rounded-lg border border-border transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+
+              {enrollResult && (
+                <>
+                  {/* Completion */}
+                  <div className="text-center space-y-3">
+                    <div className="text-4xl">&#10003;</div>
+                    <p className="text-lg font-semibold text-text">Enrollment Complete</p>
+                    <p className="text-sm text-muted">
+                      Saved <span className="font-medium text-green">{enrollResult.saved} face crops</span> for{' '}
+                      <span className="font-medium text-text">{enrollResult.person}</span>
+                    </p>
+                  </div>
+
+                  {/* Show captured crops */}
+                  {enrollCrops.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2">
+                      {enrollCrops.map((crop, i) => (
+                        <img
+                          key={i}
+                          src={`data:image/jpeg;base64,${crop}`}
+                          alt={`Crop ${i + 1}`}
+                          className="w-full aspect-square object-cover rounded-lg border border-border"
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => { setEnrollOpen(false); setEnrollResult(null) }}
+                    className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-lg transition-colors"
+                  >
+                    Done
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 

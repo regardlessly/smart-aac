@@ -232,6 +232,20 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  // ── Enrollment ──
+  startEnrollment: (cameraId: number, personName: string, duration?: number) =>
+    apiFetch<{ status: string }>('/api/cameras/enrollment/start', {
+      method: 'POST',
+      body: JSON.stringify({ camera_id: cameraId, person_name: personName, duration: duration || 15 }),
+    }),
+  cancelEnrollment: () =>
+    apiFetch<{ status: string }>('/api/cameras/enrollment/cancel', {
+      method: 'POST',
+    }),
+  enrollmentStatus: () =>
+    apiFetch<{ active: boolean; camera_name?: string; person_name?: string; captured?: number }>(
+      '/api/cameras/enrollment/status'),
+
   // ── Sync Config ──
   getSyncConfig: () =>
     apiFetch<{ sync_mode: string; sync_selected_ids: string }>('/api/config/sync'),

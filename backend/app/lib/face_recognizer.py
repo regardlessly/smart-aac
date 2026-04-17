@@ -515,7 +515,7 @@ def get_person_name(filename):
 
     descriptors = {'front', 'side', 'left', 'right', 'profile', 'up', 'down',
                    'close', 'far', 'cctv', 'cam', 'camera', 'night', 'day',
-                   'auto', 'learn', 'learned'}
+                   'auto', 'learn', 'learned', 'enroll', 'enrolled'}
     while len(parts) > 1:
         last = parts[-1].lower()
         stripped = re.sub(r'\d+$', '', last)
@@ -604,7 +604,7 @@ def annotate_frame(frame, face_results, camera_name='Camera',
 
 
 def auto_learn_face(frame, face_result, known_faces_dir, engine,
-                    max_per_person=15, auto_learn_threshold=0.50):
+                    max_per_person=15, auto_learn_threshold=0.35):
     """
     Save a high-confidence CCTV face crop as training data.
     Only saves if the similarity score is well above the recognition threshold
@@ -1559,7 +1559,7 @@ class FaceRecognizer:
                  on_person_detected=None, confidence_threshold=0.35,
                  capture_interval=2, analyse_every=5,
                  det_size=(640, 640), output_dir=None,
-                 auto_learn=True, auto_learn_threshold=0.50,
+                 auto_learn=True, auto_learn_threshold=0.35,
                  max_auto_learn_per_person=15,
                  save_captures=True):
         """
@@ -1593,6 +1593,7 @@ class FaceRecognizer:
         self._max_auto_learn_per_person = max_auto_learn_per_person
         self._save_captures = save_captures
         self._latest_frames = {}  # camera_name -> latest captured frame
+        self._latest_results = {}  # camera_name -> (face_results, person_boxes)
         self._latest_frames_lock = threading.Lock()
 
         self._output_dir = output_dir or tempfile.mkdtemp(prefix="face_recognizer_")
@@ -1762,6 +1763,11 @@ class FaceRecognizer:
         with self._latest_frames_lock:
             return self._latest_frames.get(camera_name)
 
+    def get_latest_results(self, camera_name):
+        """Return (face_results, person_boxes) from the last analysis, or None."""
+        with self._latest_frames_lock:
+            return self._latest_results.get(camera_name)
+
     def _camera_loop(self, cam_cfg):
         """Internal camera thread: capture frames, analyse batches, fire callbacks."""
         camera_name = cam_cfg.get('name', 'Camera')
@@ -1853,6 +1859,10 @@ class FaceRecognizer:
                 cx = r['x'] + r['w'] // 2
                 cy = r['y'] + r['h'] // 2
                 self._session.spatial_points[camera_name].append((cx, cy))
+            # Store latest results for snapshot loop (avoids re-running analysis)
+            with self._latest_frames_lock:
+                self._latest_results[camera_name] = (
+                    face_results, list(person_boxes or []))
 
         analyse_batch(
             batch_frames, batch_timestamps, self._engine,

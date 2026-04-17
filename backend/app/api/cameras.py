@@ -684,6 +684,53 @@ def _run_sync_background(app, odoo_base, centre_id, access_token,
         })
 
 
+# ---------------------------------------------------------------------------
+# CCTV Face Enrollment
+# ---------------------------------------------------------------------------
+
+@bp.route('/api/cameras/enrollment/start', methods=['POST'])
+@login_required
+def enrollment_start():
+    """Start a face enrollment session for a specific camera + person."""
+    from ..services.face_recognition_service import FaceRecognitionService
+
+    data = request.get_json() or {}
+    camera_id = data.get('camera_id')
+    person_name = (data.get('person_name') or '').strip()
+    duration = int(data.get('duration', 15))
+
+    if not camera_id or not person_name:
+        return jsonify({'error': 'camera_id and person_name required'}), 400
+
+    camera = db.session.get(Camera, camera_id)
+    if not camera or not camera.rtsp_url:
+        return jsonify({'error': 'Camera not found or no RTSP URL'}), 404
+
+    result = FaceRecognitionService.start_enrollment(
+        camera.name, person_name, camera.rtsp_url, duration)
+
+    if 'error' in result:
+        return jsonify(result), 409
+
+    return jsonify(result)
+
+
+@bp.route('/api/cameras/enrollment/cancel', methods=['POST'])
+@login_required
+def enrollment_cancel():
+    """Cancel an active enrollment session."""
+    from ..services.face_recognition_service import FaceRecognitionService
+    return jsonify(FaceRecognitionService.cancel_enrollment())
+
+
+@bp.route('/api/cameras/enrollment/status')
+@login_required
+def enrollment_status():
+    """Return current enrollment state."""
+    from ..services.face_recognition_service import FaceRecognitionService
+    return jsonify(FaceRecognitionService.get_enrollment_status())
+
+
 @bp.route('/api/cameras/known-faces/sync-odoo', methods=['POST'])
 @login_required
 def sync_known_faces_from_odoo():
