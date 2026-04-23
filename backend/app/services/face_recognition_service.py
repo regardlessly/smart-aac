@@ -1018,6 +1018,11 @@ class FaceRecognitionService:
         logger.info('Snapshot loop active — cameras: %s',
                     list(cls._camera_id_map.keys()))
 
+        # Track when we last ran DB cleanup (purge snapshots older than 3 days)
+        last_cleanup = 0  # epoch seconds
+        CLEANUP_INTERVAL = 3600  # once per hour
+        RETENTION_DAYS = 3
+
         from ..lib.face_recognizer import annotate_frame
 
         while cls._running:
@@ -1152,6 +1157,31 @@ class FaceRecognitionService:
             except Exception:
                 logger.error('Snapshot loop error:\n'
                              + traceback.format_exc())
+
+            # Periodic cleanup: purge cctv_snapshots older than RETENTION_DAYS
+            now = time.time()
+            if now - last_cleanup > CLEANUP_INTERVAL:
+                last_cleanup = now
+                try:
+                    with cls._app.app_context():
+                        from ..models.camera import CCTVSnapshot
+                        from ..extensions import db
+                        from datetime import datetime, timedelta, timezone
+                        cutoff = datetime.now(timezone.utc) - timedelta(days=RETENTION_DAYS)
+                        deleted = CCTVSnapshot.query.filter(
+                            CCTVSnapshot.timestamp < cutoff
+                        ).delete(synchronize_session=False)
+                        db.session.commit()
+                        if deleted:
+                            logger.info(
+                                'Retention cleanup: deleted %d snapshots older than %d days',
+                                deleted, RETENTION_DAYS)
+                except Exception:
+                    logger.error('Retention cleanup failed:\n' + traceback.format_exc())
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
 
             # Wait 5s between snapshot cycles, checking stop every 1s
             for _ in range(5):
