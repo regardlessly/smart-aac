@@ -34,7 +34,7 @@ class Config:
 
     # FaceRecognizer tuning
     FR_CAPTURE_INTERVAL = int(
-        os.environ.get('FR_CAPTURE_INTERVAL', '10'))
+        os.environ.get('FR_CAPTURE_INTERVAL', '5'))
     FR_ANALYSE_EVERY = int(
         os.environ.get('FR_ANALYSE_EVERY', '1'))
 

@@ -206,18 +206,16 @@ def list_known_faces():
     data_dir = current_app.config['FACE_DATA_DIR']
     known_dir = os.path.join(data_dir, 'known_faces')
 
-    # known_faces stores flat files: Name.jpg, Name_auto_*.jpg
-    # Group by person name (filename stem before first _auto_ or before extension)
+    # known_faces stores flat files: Name.jpg, Name_N.jpg, Name_auto_*.jpg
+    # Use get_person_name() to strip numeric suffixes and descriptors
+    from ..lib.face_recognizer import get_person_name
     person_counts = {}
     if os.path.isdir(known_dir):
         for fname in sorted(os.listdir(known_dir)):
             if not fname.lower().endswith(('.jpg', '.jpeg', '.png')):
                 continue
-            # Extract person name: split on _auto_ first, then strip extension
-            if '_auto_' in fname:
-                person = fname.split('_auto_')[0]
-            else:
-                person = os.path.splitext(fname)[0]
+            # Proper name extraction (strips _N and _auto_ suffixes)
+            person = get_person_name(fname).replace(' ', '_')
             person_counts[person] = person_counts.get(person, 0) + 1
 
     # Get embedding counts from the running face engine
@@ -688,16 +686,35 @@ def _run_sync_background(app, odoo_base, centre_id, access_token,
 # CCTV Face Enrollment
 # ---------------------------------------------------------------------------
 
+@bp.route('/api/cameras/enrollment/prewarm', methods=['POST'])
+@login_required
+def enrollment_prewarm():
+    """Pre-open RTSP connection for a camera without starting full enrollment.
+    Call this as soon as user selects a camera in the modal."""
+    from ..services.face_recognition_service import FaceRecognitionService
+
+    data = request.get_json() or {}
+    camera_id = data.get('camera_id')
+    if not camera_id:
+        return jsonify({'error': 'camera_id required'}), 400
+
+    camera = db.session.get(Camera, camera_id)
+    if not camera or not camera.rtsp_url:
+        return jsonify({'error': 'Camera not found'}), 404
+
+    result = FaceRecognitionService.prewarm_rtsp(camera.name, camera.rtsp_url)
+    return jsonify(result)
+
+
 @bp.route('/api/cameras/enrollment/start', methods=['POST'])
 @login_required
 def enrollment_start():
-    """Start a face enrollment session for a specific camera + person."""
+    """Start a MANUAL face enrollment session — opens RTSP, waits for capture calls."""
     from ..services.face_recognition_service import FaceRecognitionService
 
     data = request.get_json() or {}
     camera_id = data.get('camera_id')
     person_name = (data.get('person_name') or '').strip()
-    duration = int(data.get('duration', 15))
 
     if not camera_id or not person_name:
         return jsonify({'error': 'camera_id and person_name required'}), 400
@@ -706,12 +723,36 @@ def enrollment_start():
     if not camera or not camera.rtsp_url:
         return jsonify({'error': 'Camera not found or no RTSP URL'}), 404
 
-    result = FaceRecognitionService.start_enrollment(
-        camera.name, person_name, camera.rtsp_url, duration)
+    result = FaceRecognitionService.start_manual_enrollment(
+        camera.name, person_name, camera.rtsp_url)
 
     if 'error' in result:
         return jsonify(result), 409
 
+    return jsonify(result)
+
+
+@bp.route('/api/cameras/enrollment/capture', methods=['POST'])
+@login_required
+def enrollment_capture():
+    """Capture one face from the active enrollment session."""
+    from ..services.face_recognition_service import FaceRecognitionService
+    result = FaceRecognitionService.manual_capture_one()
+    if 'error' in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@bp.route('/api/cameras/enrollment/finish', methods=['POST'])
+@login_required
+def enrollment_finish():
+    """Save captured crops and close the enrollment session."""
+    from ..services.face_recognition_service import FaceRecognitionService
+    data = request.get_json() or {}
+    keep_indices = data.get('keep_indices')  # optional list
+    result = FaceRecognitionService.finish_manual_enrollment(keep_indices)
+    if 'error' in result:
+        return jsonify(result), 400
     return jsonify(result)
 
 

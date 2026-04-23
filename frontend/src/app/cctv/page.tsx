@@ -60,6 +60,8 @@ export default function CCTVPage() {
   const [members, setMembers] = useState<RosterMember[]>([])
   const enrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [enrollCountdown, setEnrollCountdown] = useState(0)
+  const [enrollLiveFrame, setEnrollLiveFrame] = useState<string | null>(null)
+  const [enrollReady, setEnrollReady] = useState(false)
 
   // Track SSE detection IDs so polled data doesn't overwrite SSE data (which has crops)
   const sseDetectionIds = useRef(new Set<string>())
@@ -158,9 +160,35 @@ export default function CCTVPage() {
       }, 8000)
     }
     // Enrollment SSE events
+    if (event.type === 'enrollment_ready') {
+      setEnrollReady(true)
+    }
+    if (event.type === 'enrollment_live_frame') {
+      const b64 = (event as Record<string, unknown>).frame_b64 as string | undefined
+      if (b64) {
+        setEnrollLiveFrame(b64)
+        setEnrollReady(true)  // first live frame also means ready
+      }
+    }
     if (event.type === 'enrollment_progress') {
       const crop = (event as Record<string, unknown>).face_crop_b64 as string | undefined
-      if (crop) setEnrollCrops(prev => [...prev, crop])
+      if (crop) {
+        setEnrollCrops(prev => [...prev, crop])
+        // Play a bell/chime sound when a face is captured
+        try {
+          const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+          const osc = audioCtx.createOscillator()
+          const gain = audioCtx.createGain()
+          osc.connect(gain)
+          gain.connect(audioCtx.destination)
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime) // A5
+          osc.frequency.exponentialRampToValueAtTime(1320, audioCtx.currentTime + 0.1) // E6
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3)
+          osc.start()
+          osc.stop(audioCtx.currentTime + 0.3)
+        } catch { /* audio not available */ }
+      }
       setEnrollMsg((event as Record<string, unknown>).message as string || '')
     }
     if (event.type === 'enrollment_complete') {
@@ -726,7 +754,14 @@ export default function CCTVPage() {
                   <p className="text-xs text-muted mt-0.5">Capture face from CCTV camera</p>
                 </div>
                 <button
-                  onClick={() => { setEnrollOpen(false); if (enrolling) api.cancelEnrollment().catch(() => {}) }}
+                  onClick={() => {
+                    setEnrollOpen(false)
+                    // Always cancel — clears any pre-warmed or active session
+                    api.cancelEnrollment().catch(() => {})
+                    setEnrolling(false)
+                    setEnrollReady(false)
+                    setEnrollLiveFrame(null)
+                  }}
                   className="text-muted hover:text-text text-xl"
                 >&#10005;</button>
               </div>
@@ -738,7 +773,12 @@ export default function CCTVPage() {
                     <label className="block text-sm font-medium text-text mb-1">Camera</label>
                     <select
                       value={enrollCamId ?? ''}
-                      onChange={e => setEnrollCamId(Number(e.target.value) || null)}
+                      onChange={e => {
+                        const id = Number(e.target.value) || null
+                        setEnrollCamId(id)
+                        // Pre-warm RTSP connection while user picks person
+                        if (id) api.prewarmEnrollment(id).catch(() => {})
+                      }}
                       className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text"
                     >
                       <option value="">Select camera...</option>
@@ -788,74 +828,71 @@ export default function CCTVPage() {
                     <p className="font-medium text-text">Instructions:</p>
                     <p>1. Only the senior should be in the room (close the door)</p>
                     <p>2. Stand 2-3 metres from camera, <b>facing the camera</b></p>
-                    <p>3. When capture starts, slowly turn head:</p>
-                    <p className="pl-3">Look at camera &rarr; turn left &rarr; back to center &rarr; turn right &rarr; look up &rarr; look down</p>
-                    <p>4. Capture takes ~15 seconds</p>
+                    <p>3. Click <b>Capture</b> for each pose: front, left, right, up, down</p>
+                    <p>4. When done, click <b>Finish &amp; Save</b></p>
                   </div>
 
                   {/* Start button */}
                   <button
                     onClick={async () => {
                       if (!enrollCamId || !enrollPerson) return
-                      setEnrolling(true)
+                      if (enrollMsg === 'Opening camera...') return  // already starting
                       setEnrollCrops([])
-                      setEnrollMsg('')
-                      setEnrollCountdown(15)
-                      enrollTimerRef.current = setInterval(() => {
-                        setEnrollCountdown(prev => {
-                          if (prev <= 1) {
-                            if (enrollTimerRef.current) clearInterval(enrollTimerRef.current)
-                            return 0
-                          }
-                          return prev - 1
-                        })
-                      }, 1000)
+                      setEnrollReady(false)
+                      setEnrollLiveFrame(null)
+                      setEnrollMsg('Opening camera...')
                       try {
-                        await api.startEnrollment(enrollCamId, enrollPerson, 15)
-                      } catch {
-                        setEnrolling(false)
-                        setEnrollMsg('Failed to start enrollment')
-                        if (enrollTimerRef.current) clearInterval(enrollTimerRef.current)
+                        await api.startEnrollment(enrollCamId, enrollPerson)
+                        // Only switch to capture view AFTER backend confirms session opened
+                        setEnrolling(true)
+                        setEnrollMsg('')
+                      } catch (e) {
+                        setEnrollMsg(e instanceof Error ? e.message : 'Failed to start enrollment')
                       }
                     }}
-                    disabled={!enrollCamId || !enrollPerson}
+                    disabled={!enrollCamId || !enrollPerson || enrollMsg === 'Opening camera...'}
                     className="w-full py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-lg
                                transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Start Enrollment
+                    {enrollMsg === 'Opening camera...' ? 'Opening camera...' : 'Start Enrollment'}
                   </button>
+                  {enrollMsg && enrollMsg !== 'Opening camera...' && (
+                    <p className="text-xs text-coral text-center">{enrollMsg}</p>
+                  )}
                 </>
               )}
 
               {enrolling && (
                 <>
-                  {/* Live camera feed */}
-                  {enrollCamId && (() => {
-                    const snap = snapshotMap.get(enrollCamId)
-                    return snap?.snapshot_b64 ? (
+                  {/* Live camera feed — prefers SSE live frame (2.5fps), falls back to snapshot */}
+                  {(() => {
+                    const snap = enrollCamId ? snapshotMap.get(enrollCamId) : null
+                    const liveSrc = enrollLiveFrame || snap?.snapshot_b64
+                    return liveSrc ? (
                       <div className="rounded-lg overflow-hidden border border-border relative">
                         <img
-                          src={`data:image/jpeg;base64,${snap.snapshot_b64}`}
+                          src={`data:image/jpeg;base64,${liveSrc}`}
                           alt="Live feed"
                           className="w-full"
                         />
-                        <div className="absolute top-2 right-2 bg-black/70 text-white text-sm font-bold px-3 py-1 rounded-lg">
-                          {enrollCountdown}s
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/30">
-                          <div
-                            className="h-full bg-primary transition-all"
-                            style={{ width: `${Math.min(100, (enrollCrops.length / 8) * 100)}%` }}
-                          />
-                        </div>
+                        {enrollLiveFrame && (
+                          <div className="absolute top-2 left-2 bg-coral text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            LIVE
+                          </div>
+                        )}
                       </div>
-                    ) : null
+                    ) : (
+                      <div className="rounded-lg border border-border bg-surface p-8 text-center text-sm text-muted">
+                        Waiting for camera...
+                      </div>
+                    )
                   })()}
 
                   {/* Progress info */}
-                  <div className="text-center space-y-2">
-                    <p className="text-sm text-muted">Capturing faces for <span className="font-medium text-text">{enrollPerson}</span></p>
-                    <p className="text-xs text-muted">{enrollCrops.length} face{enrollCrops.length !== 1 ? 's' : ''} captured — face the camera, slowly turn head left, right, up, down</p>
+                  <div className="text-center space-y-1">
+                    <p className="text-sm text-text">Enrolling <span className="font-semibold">{enrollPerson}</span></p>
+                    <p className="text-xs text-muted">{enrollCrops.length} face{enrollCrops.length !== 1 ? 's' : ''} captured</p>
                     {enrollMsg && (
                       <p className="text-xs text-orange">{enrollMsg}</p>
                     )}
@@ -875,17 +912,67 @@ export default function CCTVPage() {
                     </div>
                   )}
 
-                  {/* Cancel button */}
+                  {/* Capture button */}
                   <button
+                    disabled={!enrollReady}
                     onClick={async () => {
-                      try { await api.cancelEnrollment() } catch {}
-                      setEnrolling(false)
-                      if (enrollTimerRef.current) clearInterval(enrollTimerRef.current)
+                      setEnrollMsg('')
+                      try {
+                        const r = await api.captureEnrollment()
+                        setEnrollCrops(prev => [...prev, r.face_crop_b64])
+                        // Play bell sound
+                        try {
+                          const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+                          const osc = ctx.createOscillator()
+                          const gain = ctx.createGain()
+                          osc.connect(gain); gain.connect(ctx.destination)
+                          osc.frequency.setValueAtTime(880, ctx.currentTime)
+                          osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.1)
+                          gain.gain.setValueAtTime(0.3, ctx.currentTime)
+                          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+                          osc.start(); osc.stop(ctx.currentTime + 0.3)
+                        } catch { /* ignore */ }
+                      } catch (e) {
+                        setEnrollMsg(e instanceof Error ? e.message : 'Capture failed')
+                      }
                     }}
-                    className="w-full py-2 bg-surface hover:bg-border text-text text-sm rounded-lg border border-border transition-colors"
+                    className="w-full py-3 bg-primary hover:bg-primary-dark text-white text-base font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Cancel
+                    {enrollReady
+                      ? `\u{1F4F7} Capture Face (${enrollCrops.length})`
+                      : 'Connecting to camera...'}
                   </button>
+
+                  {/* Finish / Cancel */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={async () => {
+                        try { await api.cancelEnrollment() } catch {}
+                        setEnrolling(false)
+                        setEnrollCrops([])
+                        setEnrollLiveFrame(null)
+                      }}
+                      className="py-2 bg-surface hover:bg-border text-text text-sm rounded-lg border border-border transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const r = await api.finishEnrollment()
+                          setEnrolling(false)
+                          setEnrollLiveFrame(null)
+                          setEnrollResult({ saved: r.saved, person: r.person })
+                        } catch (e) {
+                          setEnrollMsg(e instanceof Error ? e.message : 'Save failed')
+                        }
+                      }}
+                      disabled={enrollCrops.length < 1}
+                      className="py-2 bg-green hover:bg-green/80 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Finish &amp; Save ({enrollCrops.length})
+                    </button>
+                  </div>
                 </>
               )}
 

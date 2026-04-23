@@ -340,12 +340,24 @@ class FaceRecognitionEngine:
                         if psim >= self.confidence_threshold:
                             name = pname
 
+                # Compute yaw angle from eye positions (for pose-based diversity)
+                # kps order: [right_eye, left_eye, nose, right_mouth, left_mouth]
+                yaw = 0.0
+                if hasattr(face, 'kps') and face.kps is not None:
+                    kps = face.kps
+                    eye_mid_x = (kps[0][0] + kps[1][0]) / 2
+                    nose_x = kps[2][0]
+                    face_width = max(1, fx2 - fx1)
+                    # Normalised nose offset from eye midpoint: 0=frontal, ±1=profile
+                    yaw = (nose_x - eye_mid_x) / (face_width * 0.5)
+
                 face_results.append({
                     'x': fx1_full, 'y': fy1_full, 'w': w, 'h': h,
                     'name': name, 'score': best_score,
                     'embedding': embedding,
                     'det_score': det_conf,
                     'person_conf': person['conf'],
+                    'yaw': yaw,
                 })
 
         # Deduplicate overlapping faces from padded person crops.
@@ -604,15 +616,18 @@ def annotate_frame(frame, face_results, camera_name='Camera',
 
 
 def auto_learn_face(frame, face_result, known_faces_dir, engine,
-                    max_per_person=15, auto_learn_threshold=0.35):
+                    max_per_person=15, auto_learn_threshold=0.45):
     """
     Save a high-confidence CCTV face crop as training data.
-    Only saves if the similarity score is well above the recognition threshold
-    AND the embedding is diverse enough.
+    Only saves KNOWN people — strangers are never auto-learned.
     """
     name = face_result['name']
     score = face_result['score']
     embedding = face_result['embedding']
+
+    # ONLY auto-learn for known people. Never save strangers.
+    if not name or name == 'Stranger' or name.startswith('Stranger_'):
+        return None
 
     # Only auto-learn if similarity is well above recognition threshold
     if score < auto_learn_threshold:
@@ -1559,7 +1574,7 @@ class FaceRecognizer:
                  on_person_detected=None, confidence_threshold=0.35,
                  capture_interval=2, analyse_every=5,
                  det_size=(640, 640), output_dir=None,
-                 auto_learn=True, auto_learn_threshold=0.35,
+                 auto_learn=True, auto_learn_threshold=0.45,
                  max_auto_learn_per_person=15,
                  save_captures=True):
         """
@@ -1792,6 +1807,17 @@ class FaceRecognizer:
         legacy_stats = self._session.as_legacy_dict()
 
         while not self._stop_event.is_set():
+            # Pause ALL camera captures during enrollment
+            # (enrollment takes over the RTSP / NVR bandwidth)
+            try:
+                from ..services.face_recognition_service import (
+                    FaceRecognitionService as _FRS)
+                if _FRS._enrollment_active:
+                    self._stop_event.wait(2)
+                    continue
+            except Exception:
+                pass
+
             # Capture frame
             frame = capture_frame(camera_url, camera_name)
             if frame is None:

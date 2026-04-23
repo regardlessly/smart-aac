@@ -37,7 +37,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
 
     if (!res.ok) {
-      throw new Error(`API error: ${res.status} ${res.statusText}`)
+      // Try to include backend error message in thrown error
+      let msg = `API error: ${res.status} ${res.statusText}`
+      try {
+        const body = await res.json()
+        if (body?.error) msg = body.error
+      } catch { /* not JSON */ }
+      throw new Error(msg)
     }
     return res.json()
   }).finally(() => {
@@ -233,11 +239,25 @@ export const api = {
     }),
 
   // ── Enrollment ──
-  startEnrollment: (cameraId: number, personName: string, duration?: number) =>
+  prewarmEnrollment: (cameraId: number) =>
+    apiFetch<{ status: string }>('/api/cameras/enrollment/prewarm', {
+      method: 'POST',
+      body: JSON.stringify({ camera_id: cameraId }),
+    }),
+  startEnrollment: (cameraId: number, personName: string) =>
     apiFetch<{ status: string }>('/api/cameras/enrollment/start', {
       method: 'POST',
-      body: JSON.stringify({ camera_id: cameraId, person_name: personName, duration: duration || 15 }),
+      body: JSON.stringify({ camera_id: cameraId, person_name: personName }),
     }),
+  captureEnrollment: () =>
+    apiFetch<{ status: string; captured: number; quality: number; face_crop_b64: string }>(
+      '/api/cameras/enrollment/capture', { method: 'POST' }),
+  finishEnrollment: (keepIndices?: number[]) =>
+    apiFetch<{ status: string; person: string; saved: number; embeddings: number }>(
+      '/api/cameras/enrollment/finish', {
+        method: 'POST',
+        body: JSON.stringify(keepIndices ? { keep_indices: keepIndices } : {}),
+      }),
   cancelEnrollment: () =>
     apiFetch<{ status: string }>('/api/cameras/enrollment/cancel', {
       method: 'POST',
