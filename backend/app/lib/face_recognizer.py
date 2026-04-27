@@ -616,7 +616,7 @@ def annotate_frame(frame, face_results, camera_name='Camera',
 
 
 def auto_learn_face(frame, face_result, known_faces_dir, engine,
-                    max_per_person=15, auto_learn_threshold=0.45):
+                    max_per_person=15, auto_learn_threshold=0.50):
     """
     Save a high-confidence CCTV face crop as training data.
     Only saves KNOWN people — strangers are never auto-learned.

@@ -126,7 +126,7 @@ class FaceRecognitionService:
                     known_faces=known_faces_dir,
                     models={'yolo': model_path},
                     on_person_detected=cls._on_detection,
-                    confidence_threshold=0.40,
+                    confidence_threshold=0.45,
                     capture_interval=app.config.get(
                         'FR_CAPTURE_INTERVAL', 5),
                     analyse_every=app.config.get(
