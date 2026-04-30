@@ -1,0 +1,318 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <!-- Camera frame guide -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#334155" stroke-width="0.3"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="900" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <text x="600" y="45" text-anchor="middle" fill="white" font-size="22" font-weight="700">Face Enrollment Guide — Ideal Photo Reference</text>
+  <text x="600" y="70" text-anchor="middle" fill="#94a3b8" font-size="13">Take 5 photos per person at CCTV distance (2-3m). Face should be ~15-20% of frame height.</text>
+
+  <!-- ===== ROW 1: Five angle photos ===== -->
+
+  <!-- 1. FRONT -->
+  <g transform="translate(30, 95)">
+    <rect width="220" height="280" rx="12" fill="url(#card)" stroke="#334155" stroke-width="1"/>
+    <!-- Camera frame simulation -->
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="url(#grid)"/>
+    <!-- Body (shoulders) -->
+    <ellipse cx="110" cy="155" rx="45" ry="20" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <!-- Neck -->
+    <rect x="100" y="100" width="20" height="25" rx="5" fill="none" stroke="#60a5fa" stroke-width="1.5"/>
+    <!-- Head - front facing -->
+    <ellipse cx="110" cy="82" rx="28" ry="35" fill="none" stroke="#60a5fa" stroke-width="2"/>
+    <!-- Eyes -->
+    <ellipse cx="97" cy="76" rx="5" ry="3.5" fill="#60a5fa"/>
+    <ellipse cx="123" cy="76" rx="5" ry="3.5" fill="#60a5fa"/>
+    <!-- Pupils -->
+    <circle cx="97" cy="76" r="2" fill="#0f172a"/>
+    <circle cx="123" cy="76" r="2" fill="#0f172a"/>
+    <!-- Eyebrows -->
+    <path d="M89 69 Q97 65 105 69" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <path d="M115 69 Q123 65 131 69" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Nose -->
+    <path d="M110 80 L107 92 L113 92" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Mouth -->
+    <path d="M100 99 Q110 106 120 99" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Ears -->
+    <ellipse cx="82" cy="82" rx="5" ry="10" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <ellipse cx="138" cy="82" rx="5" ry="10" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Face size indicator -->
+    <line x1="145" y1="47" x2="145" y2="117" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,2"/>
+    <line x1="140" y1="47" x2="150" y2="47" stroke="#f59e0b" stroke-width="1"/>
+    <line x1="140" y1="117" x2="150" y2="117" stroke="#f59e0b" stroke-width="1"/>
+    <text x="155" y="85" fill="#f59e0b" font-size="8">~15-20%</text>
+    <text x="155" y="95" fill="#f59e0b" font-size="8">of height</text>
+    <!-- Label -->
+    <rect x="10" y="170" width="200" height="100" rx="6" fill="#0f172a"/>
+    <text x="110" y="192" text-anchor="middle" fill="#3b82f6" font-size="15" font-weight="600">1. Front</text>
+    <text x="110" y="212" text-anchor="middle" fill="#94a3b8" font-size="11">Looking directly at camera</text>
+    <text x="110" y="228" text-anchor="middle" fill="#64748b" font-size="10">Best for initial enrollment</text>
+    <text x="110" y="244" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="500">★ Most important</text>
+  </g>
+
+  <!-- 2. LEFT 45° -->
+  <g transform="translate(265, 95)">
+    <rect width="220" height="280" rx="12" fill="url(#card)" stroke="#334155" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="url(#grid)"/>
+    <!-- Body -->
+    <ellipse cx="115" cy="155" rx="45" ry="20" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <!-- Neck slightly rotated -->
+    <rect x="105" y="100" width="20" height="25" rx="5" fill="none" stroke="#60a5fa" stroke-width="1.5" transform="rotate(-5, 115, 112)"/>
+    <!-- Head - turned left 45° -->
+    <ellipse cx="115" cy="82" rx="26" ry="35" fill="none" stroke="#60a5fa" stroke-width="2" transform="rotate(-8, 115, 82)"/>
+    <!-- Eyes (left eye smaller/further) -->
+    <ellipse cx="100" cy="76" rx="4" ry="3" fill="#60a5fa"/>
+    <ellipse cx="124" cy="75" rx="5.5" ry="3.5" fill="#60a5fa"/>
+    <circle cx="100" cy="76" r="1.5" fill="#0f172a"/>
+    <circle cx="124" cy="75" r="2" fill="#0f172a"/>
+    <!-- Eyebrows -->
+    <path d="M93 70 Q100 67 107 70" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <path d="M117 69 Q124 65 132 68" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Nose (shifted right) -->
+    <path d="M113 80 L108 92 L116 92" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Mouth -->
+    <path d="M103 99 Q113 105 123 99" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Left ear visible, right hidden -->
+    <ellipse cx="88" cy="82" rx="5" ry="10" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Rotation arrow -->
+    <path d="M160 50 Q175 45 178 60" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+    <polygon points="178,60 182,54 174,55" fill="#f59e0b"/>
+    <text x="165" y="42" fill="#f59e0b" font-size="9">45°</text>
+    <!-- Label -->
+    <rect x="10" y="170" width="200" height="100" rx="6" fill="#0f172a"/>
+    <text x="110" y="192" text-anchor="middle" fill="#3b82f6" font-size="15" font-weight="600">2. Left 45°</text>
+    <text x="110" y="212" text-anchor="middle" fill="#94a3b8" font-size="11">Head turned slightly left</text>
+    <text x="110" y="228" text-anchor="middle" fill="#64748b" font-size="10">Shows left cheek profile</text>
+    <text x="110" y="244" text-anchor="middle" fill="#64748b" font-size="10">Both eyes still visible</text>
+  </g>
+
+  <!-- 3. RIGHT 45° -->
+  <g transform="translate(500, 95)">
+    <rect width="220" height="280" rx="12" fill="url(#card)" stroke="#334155" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="url(#grid)"/>
+    <!-- Body -->
+    <ellipse cx="105" cy="155" rx="45" ry="20" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <!-- Neck -->
+    <rect x="95" y="100" width="20" height="25" rx="5" fill="none" stroke="#60a5fa" stroke-width="1.5" transform="rotate(5, 105, 112)"/>
+    <!-- Head - turned right 45° -->
+    <ellipse cx="105" cy="82" rx="26" ry="35" fill="none" stroke="#60a5fa" stroke-width="2" transform="rotate(8, 105, 82)"/>
+    <!-- Eyes (right eye smaller/further) -->
+    <ellipse cx="96" cy="75" rx="5.5" ry="3.5" fill="#60a5fa"/>
+    <ellipse cx="120" cy="76" rx="4" ry="3" fill="#60a5fa"/>
+    <circle cx="96" cy="75" r="2" fill="#0f172a"/>
+    <circle cx="120" cy="76" r="1.5" fill="#0f172a"/>
+    <!-- Eyebrows -->
+    <path d="M88 68 Q96 65 103 69" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <path d="M113 70 Q120 67 127 70" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Nose -->
+    <path d="M107 80 L104 92 L112 92" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Mouth -->
+    <path d="M97 99 Q107 105 117 99" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Right ear visible -->
+    <ellipse cx="132" cy="82" rx="5" ry="10" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Rotation arrow -->
+    <path d="M55 50 Q40 45 37 60" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+    <polygon points="37,60 33,54 41,55" fill="#f59e0b"/>
+    <text x="40" y="42" fill="#f59e0b" font-size="9">45°</text>
+    <!-- Label -->
+    <rect x="10" y="170" width="200" height="100" rx="6" fill="#0f172a"/>
+    <text x="110" y="192" text-anchor="middle" fill="#3b82f6" font-size="15" font-weight="600">3. Right 45°</text>
+    <text x="110" y="212" text-anchor="middle" fill="#94a3b8" font-size="11">Head turned slightly right</text>
+    <text x="110" y="228" text-anchor="middle" fill="#64748b" font-size="10">Shows right cheek profile</text>
+    <text x="110" y="244" text-anchor="middle" fill="#64748b" font-size="10">Both eyes still visible</text>
+  </g>
+
+  <!-- 4. LOOKING UP -->
+  <g transform="translate(735, 95)">
+    <rect width="220" height="280" rx="12" fill="url(#card)" stroke="#334155" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="url(#grid)"/>
+    <!-- Body -->
+    <ellipse cx="110" cy="158" rx="45" ry="20" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <!-- Neck extended -->
+    <rect x="100" y="105" width="20" height="28" rx="5" fill="none" stroke="#60a5fa" stroke-width="1.5"/>
+    <!-- Head - tilted up -->
+    <ellipse cx="110" cy="78" rx="28" ry="33" fill="none" stroke="#60a5fa" stroke-width="2"/>
+    <!-- Eyes (slightly higher, wider) -->
+    <ellipse cx="97" cy="74" rx="5" ry="4" fill="#60a5fa"/>
+    <ellipse cx="123" cy="74" rx="5" ry="4" fill="#60a5fa"/>
+    <circle cx="97" cy="73" r="2" fill="#0f172a"/>
+    <circle cx="123" cy="73" r="2" fill="#0f172a"/>
+    <!-- Eyebrows (higher) -->
+    <path d="M89 66 Q97 62 105 66" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <path d="M115 66 Q123 62 131 66" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Nose (shorter, nostrils visible) -->
+    <path d="M110 78 L108 87" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <ellipse cx="106" cy="88" rx="3" ry="2" fill="none" stroke="#60a5fa" stroke-width="0.8"/>
+    <ellipse cx="114" cy="88" rx="3" ry="2" fill="none" stroke="#60a5fa" stroke-width="0.8"/>
+    <!-- Mouth -->
+    <path d="M100 96 Q110 101 120 96" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Chin more visible -->
+    <!-- Up arrow -->
+    <line x1="110" y1="40" x2="110" y2="25" stroke="#f59e0b" stroke-width="1.5"/>
+    <polygon points="110,22 106,30 114,30" fill="#f59e0b"/>
+    <text x="120" y="30" fill="#f59e0b" font-size="9">15°</text>
+    <!-- Label -->
+    <rect x="10" y="170" width="200" height="100" rx="6" fill="#0f172a"/>
+    <text x="110" y="192" text-anchor="middle" fill="#3b82f6" font-size="15" font-weight="600">4. Chin Up</text>
+    <text x="110" y="212" text-anchor="middle" fill="#94a3b8" font-size="11">Chin raised ~15 degrees</text>
+    <text x="110" y="228" text-anchor="middle" fill="#64748b" font-size="10">Simulates overhead camera</text>
+    <text x="110" y="244" text-anchor="middle" fill="#64748b" font-size="10">Nostrils slightly visible</text>
+  </g>
+
+  <!-- 5. LOOKING DOWN -->
+  <g transform="translate(970, 95)">
+    <rect width="220" height="280" rx="12" fill="url(#card)" stroke="#334155" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <rect x="10" y="10" width="200" height="150" rx="6" fill="url(#grid)"/>
+    <!-- Body -->
+    <ellipse cx="110" cy="152" rx="45" ry="20" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <!-- Neck shorter -->
+    <rect x="100" y="98" width="20" height="20" rx="5" fill="none" stroke="#60a5fa" stroke-width="1.5"/>
+    <!-- Head - tilted down, more forehead visible -->
+    <ellipse cx="110" cy="78" rx="28" ry="33" fill="none" stroke="#60a5fa" stroke-width="2"/>
+    <!-- Hair/forehead line -->
+    <path d="M84 65 Q110 55 136 65" fill="none" stroke="#60a5fa" stroke-width="1" stroke-dasharray="3,2"/>
+    <!-- Eyes (lower, narrower) -->
+    <ellipse cx="97" cy="80" rx="5" ry="3" fill="#60a5fa"/>
+    <ellipse cx="123" cy="80" rx="5" ry="3" fill="#60a5fa"/>
+    <circle cx="97" cy="80" r="1.5" fill="#0f172a"/>
+    <circle cx="123" cy="80" r="1.5" fill="#0f172a"/>
+    <!-- Eyebrows closer -->
+    <path d="M89 75 Q97 72 105 75" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <path d="M115 75 Q123 72 131 75" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+    <!-- Nose -->
+    <path d="M110 83 L107 94 L113 94" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Mouth (less visible) -->
+    <path d="M103 101 Q110 104 117 101" fill="none" stroke="#60a5fa" stroke-width="1"/>
+    <!-- Down arrow -->
+    <line x1="110" y1="135" x2="110" y2="148" stroke="#f59e0b" stroke-width="1.5"/>
+    <polygon points="110,151 106,143 114,143" fill="#f59e0b"/>
+    <text x="120" y="148" fill="#f59e0b" font-size="9">15°</text>
+    <!-- Label -->
+    <rect x="10" y="170" width="200" height="100" rx="6" fill="#0f172a"/>
+    <text x="110" y="192" text-anchor="middle" fill="#3b82f6" font-size="15" font-weight="600">5. Chin Down</text>
+    <text x="110" y="212" text-anchor="middle" fill="#94a3b8" font-size="11">Looking down ~15 degrees</text>
+    <text x="110" y="228" text-anchor="middle" fill="#64748b" font-size="10">Simulates low camera angle</text>
+    <text x="110" y="244" text-anchor="middle" fill="#64748b" font-size="10">More forehead visible</text>
+  </g>
+
+  <!-- ===== ROW 2: Distance / Frame ratio guide ===== -->
+  <g transform="translate(30, 410)">
+    <rect width="555" height="260" rx="12" fill="url(#card)" stroke="#334155" stroke-width="1"/>
+    <text x="20" y="30" fill="white" font-size="16" font-weight="600">Distance &amp; Face-to-Frame Ratio</text>
+
+    <!-- TOO CLOSE -->
+    <g transform="translate(20, 50)">
+      <rect width="160" height="120" rx="6" fill="#0f172a" stroke="#ef4444" stroke-width="2"/>
+      <text x="80" y="-5" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="600">✗ Too Close</text>
+      <!-- Giant face filling frame -->
+      <ellipse cx="80" cy="65" rx="55" ry="55" fill="none" stroke="#60a5fa" stroke-width="2"/>
+      <ellipse cx="60" cy="55" rx="10" ry="7" fill="#60a5fa" opacity="0.5"/>
+      <ellipse cx="100" cy="55" rx="10" ry="7" fill="#60a5fa" opacity="0.5"/>
+      <path d="M65 80 Q80 90 95 80" fill="none" stroke="#60a5fa" stroke-width="1.5" opacity="0.5"/>
+      <text x="80" y="140" text-anchor="middle" fill="#ef4444" font-size="10">Face &gt; 50% of frame</text>
+      <text x="80" y="153" text-anchor="middle" fill="#64748b" font-size="9">&lt; 0.5m distance</text>
+    </g>
+
+    <!-- CORRECT -->
+    <g transform="translate(200, 50)">
+      <rect width="160" height="120" rx="6" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
+      <text x="80" y="-5" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="600">✓ Correct (2-3m)</text>
+      <rect x="0" y="0" width="160" height="120" rx="6" fill="url(#grid)"/>
+      <!-- Body proportional to CCTV -->
+      <rect x="60" y="70" width="40" height="50" rx="3" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,2"/>
+      <ellipse cx="80" cy="48" rx="15" ry="20" fill="none" stroke="#60a5fa" stroke-width="2"/>
+      <ellipse cx="74" cy="44" rx="3" ry="2" fill="#60a5fa"/>
+      <ellipse cx="86" cy="44" rx="3" ry="2" fill="#60a5fa"/>
+      <path d="M76 53 Q80 56 84 53" fill="none" stroke="#60a5fa" stroke-width="1"/>
+      <!-- Size indicator -->
+      <line x1="130" y1="28" x2="130" y2="68" stroke="#22c55e" stroke-width="1" stroke-dasharray="2,2"/>
+      <line x1="126" y1="28" x2="134" y2="28" stroke="#22c55e" stroke-width="1"/>
+      <line x1="126" y1="68" x2="134" y2="68" stroke="#22c55e" stroke-width="1"/>
+      <text x="138" y="50" fill="#22c55e" font-size="8">15-20%</text>
+      <text x="80" y="140" text-anchor="middle" fill="#22c55e" font-size="10">Face = 15-20% of frame</text>
+      <text x="80" y="153" text-anchor="middle" fill="#64748b" font-size="9">2-3m distance</text>
+    </g>
+
+    <!-- TOO FAR -->
+    <g transform="translate(380, 50)">
+      <rect width="160" height="120" rx="6" fill="#0f172a" stroke="#ef4444" stroke-width="2"/>
+      <text x="80" y="-5" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="600">✗ Too Far</text>
+      <rect x="0" y="0" width="160" height="120" rx="6" fill="url(#grid)"/>
+      <!-- Tiny person -->
+      <rect x="70" y="80" width="20" height="30" rx="2" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="2,1"/>
+      <ellipse cx="80" cy="73" rx="7" ry="9" fill="none" stroke="#60a5fa" stroke-width="1.5"/>
+      <circle cx="77" cy="71" r="1" fill="#60a5fa"/>
+      <circle cx="83" cy="71" r="1" fill="#60a5fa"/>
+      <text x="80" y="140" text-anchor="middle" fill="#ef4444" font-size="10">Face &lt; 5% of frame</text>
+      <text x="80" y="153" text-anchor="middle" fill="#64748b" font-size="9">&gt; 5m distance</text>
+    </g>
+  </g>
+
+  <!-- ===== Tips panel ===== -->
+  <g transform="translate(600, 410)">
+    <rect width="570" height="260" rx="12" fill="url(#card)" stroke="#334155" stroke-width="1"/>
+    <text x="20" y="30" fill="white" font-size="16" font-weight="600">Enrollment Checklist</text>
+
+    <g transform="translate(20, 50)">
+      <circle cx="8" cy="8" r="8" fill="#22c55e" opacity="0.15"/>
+      <text x="8" y="12" text-anchor="middle" fill="#22c55e" font-size="11">✓</text>
+      <text x="25" y="13" fill="#e2e8f0" font-size="12">Stand 2-3 metres from CCTV camera</text>
+
+      <circle cx="8" cy="38" r="8" fill="#22c55e" opacity="0.15"/>
+      <text x="8" y="42" text-anchor="middle" fill="#22c55e" font-size="11">✓</text>
+      <text x="25" y="43" fill="#e2e8f0" font-size="12">Good indoor lighting, no harsh shadows</text>
+
+      <circle cx="8" cy="68" r="8" fill="#22c55e" opacity="0.15"/>
+      <text x="8" y="72" text-anchor="middle" fill="#22c55e" font-size="11">✓</text>
+      <text x="25" y="73" fill="#e2e8f0" font-size="12">Remove sunglasses, hats, masks</text>
+
+      <circle cx="8" cy="98" r="8" fill="#22c55e" opacity="0.15"/>
+      <text x="8" y="102" text-anchor="middle" fill="#22c55e" font-size="11">✓</text>
+      <text x="25" y="103" fill="#e2e8f0" font-size="12">If wearing glasses daily — enroll WITH glasses</text>
+
+      <circle cx="8" cy="128" r="8" fill="#22c55e" opacity="0.15"/>
+      <text x="8" y="132" text-anchor="middle" fill="#22c55e" font-size="11">✓</text>
+      <text x="25" y="133" fill="#e2e8f0" font-size="12">Slowly turn head: center → left → right → up → down</text>
+
+      <circle cx="8" cy="158" r="8" fill="#22c55e" opacity="0.15"/>
+      <text x="8" y="162" text-anchor="middle" fill="#22c55e" font-size="11">✓</text>
+      <text x="25" y="163" fill="#e2e8f0" font-size="12">Neutral expression, mouth closed</text>
+
+      <circle cx="8" cy="188" r="8" fill="#f59e0b" opacity="0.15"/>
+      <text x="8" y="192" text-anchor="middle" fill="#f59e0b" font-size="11">★</text>
+      <text x="25" y="193" fill="#f59e0b" font-size="12">5 photos = reliable recognition at 0.40+ threshold</text>
+    </g>
+  </g>
+
+  <!-- ===== Bottom: File naming ===== -->
+  <g transform="translate(30, 690)">
+    <rect width="1140" height="80" rx="12" fill="url(#card)" stroke="#334155" stroke-width="1"/>
+    <text x="20" y="30" fill="white" font-size="14" font-weight="600">File Naming Convention</text>
+    <text x="20" y="55" fill="#94a3b8" font-size="12" font-family="monospace">
+      data/known_faces/ADRIAN_WONG.jpg  ADRIAN_WONG_2.jpg  ADRIAN_WONG_3.jpg  ADRIAN_WONG_4.jpg  ADRIAN_WONG_5.jpg
+    </text>
+    <text x="1120" y="55" text-anchor="end" fill="#64748b" font-size="11">Use underscores for spaces. Extensions: .jpg .jpeg .png</text>
+  </g>
+
+  <!-- Version -->
+  <text x="1170" y="885" text-anchor="end" fill="#475569" font-size="10">Smart AAC — CaritaHub</text>
+</svg>

@@ -1207,8 +1207,24 @@ class FaceRecognitionService:
                             _, jpeg = cv2.imencode(
                                 '.jpg', annotated,
                                 [cv2.IMWRITE_JPEG_QUALITY, 70])
-                            b64 = base64.b64encode(
-                                jpeg).decode('ascii')
+
+                            # ── Write JPEG to disk (not to DB) ──
+                            # Keeps the DB tiny; API reads the file on demand.
+                            _snap_data_dir = cls._data_dir or _DEFAULT_DATA_DIR
+                            snap_dir = os.path.join(
+                                _snap_data_dir, 'output', 'cctv_snapshots',
+                                str(cam_id))
+                            os.makedirs(snap_dir, exist_ok=True)
+                            snap_file = os.path.join(snap_dir, 'latest.jpg')
+                            try:
+                                with open(snap_file, 'wb') as _f:
+                                    _f.write(jpeg.tobytes())
+                                snap_rel = f'cctv_snapshots/{cam_id}/latest.jpg'
+                            except Exception as _e:
+                                logger.warning(
+                                    'Failed to write snapshot file for %s: %s',
+                                    cam_name, _e)
+                                snap_rel = None
 
                             import json as _json
                             snapshot = CCTVSnapshot(
@@ -1217,7 +1233,8 @@ class FaceRecognitionService:
                                 unidentified_count=unidentified,
                                 identified_names=_json.dumps(
                                     id_names) if id_names else None,
-                                snapshot_b64=b64,
+                                snapshot_path=snap_rel,
+                                snapshot_b64=None,  # no longer stored in DB
                             )
                             db.session.add(snapshot)
                             for _retry in range(3):

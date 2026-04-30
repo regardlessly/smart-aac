@@ -64,6 +64,9 @@ export default function CCTVPage() {
   const [enrollLiveFrame, setEnrollLiveFrame] = useState<string | null>(null)
   const [enrollReady, setEnrollReady] = useState(false)
 
+  // Cameras currently reconnecting (watchdog respawned their thread)
+  const [reconnectingCams, setReconnectingCams] = useState<Set<string>>(new Set())
+
   // Track SSE detection IDs so polled data doesn't overwrite SSE data (which has crops)
   const sseDetectionIds = useRef(new Set<string>())
 
@@ -151,14 +154,26 @@ export default function CCTVPage() {
         crop: event.crop || null,
       }, ...prev].slice(0, 150))
     }
-    if (event.type === 'snapshot' && !snapThrottleRef.current) {
-      // Delay slightly so all cameras in the batch have time to save
-      setTimeout(() => {
-        api.latestSnapshots().then(s => { setSnapshots(s); setLastUpdated(new Date()) }).catch(() => {})
-      }, 2000)
-      snapThrottleRef.current = setTimeout(() => {
-        snapThrottleRef.current = null
-      }, 8000)
+    if (event.type === 'snapshot') {
+      // Clear reconnecting state for this camera once a fresh snapshot arrives
+      const snapCam = (event as Record<string, unknown>).camera_name as string | undefined
+      if (snapCam) {
+        setReconnectingCams(prev => {
+          if (!prev.has(snapCam)) return prev
+          const n = new Set(prev)
+          n.delete(snapCam)
+          return n
+        })
+      }
+      if (!snapThrottleRef.current) {
+        // Delay slightly so all cameras in the batch have time to save
+        setTimeout(() => {
+          api.latestSnapshots().then(s => { setSnapshots(s); setLastUpdated(new Date()) }).catch(() => {})
+        }, 2000)
+        snapThrottleRef.current = setTimeout(() => {
+          snapThrottleRef.current = null
+        }, 8000)
+      }
     }
     // Enrollment SSE events
     if (event.type === 'enrollment_ready') {
@@ -205,6 +220,20 @@ export default function CCTVPage() {
       setEnrolling(false)
       setEnrollMsg('Enrolment cancelled')
       if (enrollTimerRef.current) { clearInterval(enrollTimerRef.current); enrollTimerRef.current = null }
+    }
+    if (event.type === 'camera_reconnect') {
+      const camName = (event as Record<string, unknown>).camera_name as string | undefined
+      if (camName) {
+        setReconnectingCams(prev => new Set([...prev, camName]))
+        // Auto-clear after 10s in case no snapshot arrives (e.g. camera stays down)
+        setTimeout(() => {
+          setReconnectingCams(prev => {
+            const n = new Set(prev)
+            n.delete(camName)
+            return n
+          })
+        }, 10000)
+      }
     }
   }, [])
 
@@ -412,6 +441,15 @@ export default function CCTVPage() {
                             ? 'bg-green animate-pulse-dot'
                             : 'bg-gray-500'
                         }`} />
+                        {/* Reconnecting overlay */}
+                        {reconnectingCams.has(cam.name) && (
+                          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-10">
+                            <div className="text-center">
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-1.5" />
+                              <div className="text-white text-xs font-semibold">Reconnecting...</div>
+                            </div>
+                          </div>
+                        )}
                         {/* Timestamp overlay */}
                         {snap?.timestamp && (
                           <div className="absolute bottom-3 right-3 bg-black/60 text-gray-300 text-[10px] px-2 py-0.5 rounded">

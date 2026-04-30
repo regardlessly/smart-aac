@@ -61,9 +61,30 @@ def latest_snapshots():
     ).order_by(Camera.id).all()
     snapshot_map = {s.camera_id: s for s in snapshots}
 
+    # Resolve snapshot data — prefer file on disk, fall back to stored b64
+    import base64 as _b64
+    _data_dir = current_app.config.get(
+        'FACE_DATA_DIR',
+        os.path.abspath(os.path.join(
+            os.path.dirname(__file__), '..', '..', '..', 'data')))
+
     result = []
     for cam in all_cameras:
         snap = snapshot_map.get(cam.id)
+        snap_b64 = None
+        if snap:
+            if snap.snapshot_path:
+                # Prefer reading JPEG from disk (not stored in DB)
+                img_path = os.path.join(_data_dir, 'output', snap.snapshot_path)
+                try:
+                    with open(img_path, 'rb') as _f:
+                        snap_b64 = _b64.b64encode(_f.read()).decode('ascii')
+                except OSError:
+                    pass  # file not yet written or deleted
+            if snap_b64 is None and snap.snapshot_b64:
+                # Legacy: snapshot stored directly in DB
+                snap_b64 = snap.snapshot_b64
+
         result.append({
             'camera_id': cam.id,
             'camera_name': cam.name,
@@ -71,7 +92,7 @@ def latest_snapshots():
             'room_id': cam.room_id,
             'room_name': cam.room.name if cam.room else None,
             'enabled': cam.enabled,
-            'snapshot_b64': snap.snapshot_b64 if snap else None,
+            'snapshot_b64': snap_b64,
             'identified_count': snap.identified_count if snap else 0,
             'unidentified_count': snap.unidentified_count if snap else 0,
             'timestamp': (snap.timestamp.isoformat() + 'Z')
