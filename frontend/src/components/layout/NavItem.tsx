@@ -25,6 +25,7 @@ const ICONS: Record<string, string> = {
   members: '🧑‍🤝‍🧑',
   settings: '⚙️',
   logs: '🖥',
+  face: '😊',
 }
 
 export default function NavItem({ label, href, icon, badge }: NavItemProps) {

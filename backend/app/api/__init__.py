@@ -15,7 +15,6 @@ def register_blueprints(app):
     from .settings import bp as settings_bp
     from .app_config import bp as app_config_bp
     from .enrollment import bp as enrollment_bp
-    from .enroll_ui import bp as enroll_ui_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -33,4 +32,3 @@ def register_blueprints(app):
     app.register_blueprint(settings_bp)
     app.register_blueprint(app_config_bp)
     app.register_blueprint(enrollment_bp)
-    app.register_blueprint(enroll_ui_bp)

@@ -5,6 +5,7 @@ export const NAV_SECTIONS = [
       { label: 'Dashboard', href: '/', icon: 'grid' },
       { label: 'Members', href: '/members', icon: 'members' },
       { label: 'Activities', href: '/activities', icon: 'calendar' },
+      { label: 'Face Enrollment', href: '/enroll', icon: 'face' },
     ],
   },
   {

@@ -57,6 +57,7 @@ class SeniorPresence(db.Model):
         index=True)
     status = db.Column(db.String(20), default='identified')
     is_current = db.Column(db.Boolean, default=True)
+    confidence = db.Column(db.Float, nullable=True)
 
     room = db.relationship('Room', backref='presences')
     camera = db.relationship('Camera', backref='presences')
@@ -78,6 +79,7 @@ class SeniorPresence(db.Model):
             if self.last_seen_at else None,
             'status': self.status,
             'is_current': self.is_current,
+            'confidence': self.confidence,
         }
 
 

@@ -53,6 +53,7 @@ class FaceRecognitionService:
     _lock = threading.Lock()
     _camera_id_map = {}       # camera name -> Camera.id
     _snapshot_thread_ref = None
+    _watchdog_thread_ref = None
     _data_dir = None
     # Per-camera face data from latest snapshot analysis.
     # {camera_name: {'identified': [name, ...],
@@ -126,7 +127,7 @@ class FaceRecognitionService:
                     known_faces=known_faces_dir,
                     models={'yolo': model_path},
                     on_person_detected=cls._on_detection,
-                    confidence_threshold=0.45,
+                    confidence_threshold=0.40,
                     capture_interval=app.config.get(
                         'FR_CAPTURE_INTERVAL', 5),
                     analyse_every=app.config.get(
@@ -144,6 +145,12 @@ class FaceRecognitionService:
                 target=cls._snapshot_loop, daemon=True,
                 name='snapshot-loop')
             cls._snapshot_thread_ref.start()
+
+            # Start watchdog thread to detect & recover stalled camera threads
+            cls._watchdog_thread_ref = threading.Thread(
+                target=cls._watchdog_loop, daemon=True,
+                name='camera-watchdog')
+            cls._watchdog_thread_ref.start()
 
             logger.info('FaceRecognizer started with %d camera(s)',
                         len(cameras))
@@ -1003,6 +1010,93 @@ class FaceRecognitionService:
             logger.error('Error processing detection:\n'
                          + traceback.format_exc())
 
+    # ── Camera watchdog loop ──────────────────────────────────────
+
+    @classmethod
+    def _watchdog_loop(cls):
+        """Detect stalled camera capture threads and respawn them.
+
+        A thread is considered stalled if it has not produced a fresh frame
+        within STALE_THRESHOLD seconds. We spawn a fresh replacement thread
+        and let the old (stuck) thread die on its own — Python cannot safely
+        kill a thread blocked inside cv2/ffmpeg native code.
+
+        Runs in its own thread, started by FaceRecognitionService.start().
+        """
+        logger.info('Camera watchdog starting (waiting 60s for engine warmup)...')
+        time.sleep(60)  # let cameras initialise before judging staleness
+        logger.info('Camera watchdog active')
+
+        STALE_THRESHOLD = 180   # seconds — capture cadence is ~50s/cam currently
+        CHECK_INTERVAL = 30     # seconds between watchdog passes
+        # Per-camera cooldown: don't respawn the same cam more than once
+        # every COOLDOWN seconds (prevents respawn storm if NVR is down)
+        COOLDOWN = 120
+        last_respawn = {}  # camera_name -> epoch ts
+
+        while cls._running:
+            try:
+                with cls._lock:
+                    instance = cls._instance
+                if instance is None:
+                    time.sleep(CHECK_INTERVAL)
+                    continue
+
+                # Skip watchdog during enrollment — capture threads are
+                # intentionally paused so all cameras will look stale
+                if cls._enrollment_active:
+                    time.sleep(CHECK_INTERVAL)
+                    continue
+
+                now = time.time()
+                # Snapshot camera names so respawning doesn't mutate during iteration
+                camera_names = list(instance.get_camera_names())
+                for cam_name in camera_names:
+                    age = instance.get_capture_age(cam_name)
+                    if age <= STALE_THRESHOLD:
+                        continue
+
+                    # Cooldown check
+                    last = last_respawn.get(cam_name, 0)
+                    if now - last < COOLDOWN:
+                        logger.debug(
+                            '[watchdog] %s stale %.0fs but in cooldown',
+                            cam_name, age)
+                        continue
+
+                    logger.warning(
+                        '[watchdog] %s stale for %.0fs — respawning capture thread',
+                        cam_name, age if age != float('inf') else -1)
+                    last_respawn[cam_name] = now
+
+                    try:
+                        instance.respawn_camera_thread(cam_name)
+                    except Exception:
+                        logger.exception(
+                            '[watchdog] respawn failed for %s', cam_name)
+                        continue
+
+                    # Notify the UI so the dashboard tile can show
+                    # "Reconnecting..." until a fresh frame arrives
+                    try:
+                        from ..api.sse import push_event
+                        push_event({
+                            'type': 'camera_reconnect',
+                            'camera_name': cam_name,
+                            'stale_seconds': round(age, 1)
+                            if age != float('inf') else None,
+                        })
+                    except Exception:
+                        logger.exception(
+                            '[watchdog] failed to push SSE for %s', cam_name)
+
+            except Exception:
+                logger.exception('Watchdog iteration error')
+
+            time.sleep(CHECK_INTERVAL)
+
+        logger.info('Camera watchdog stopped')
+
     # ── Periodic snapshot loop ────────────────────────────────────
 
     @classmethod
@@ -1021,7 +1115,7 @@ class FaceRecognitionService:
         # Track when we last ran DB cleanup (purge snapshots older than 3 days)
         last_cleanup = 0  # epoch seconds
         CLEANUP_INTERVAL = 3600  # once per hour
-        RETENTION_DAYS = 3
+        RETENTION_DAYS = 1
 
         from ..lib.face_recognizer import annotate_frame
 

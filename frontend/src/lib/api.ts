@@ -238,6 +238,32 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  // ── Web Enrollment (webcam-based) ──
+  analyzePhoto: async (photo: Blob) => {
+    const token = getToken()
+    const form = new FormData()
+    form.append('photo', photo, 'capture.jpg')
+    const res = await fetch(`${API_BASE}/api/enroll/analyze`, {
+      method: 'POST',
+      body: form,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+    if (res.status === 401) {
+      clearToken(); clearUser()
+      if (typeof window !== 'undefined') window.location.href = '/login'
+      throw new Error('Session expired')
+    }
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || `Analyze failed (${res.status})`)
+    return data as { accepted: boolean; crop_b64: string; quality: number; face_w: number; face_h: number }
+  },
+  saveWebEnrollment: (name: string, crops: string[]) =>
+    apiFetch<{ status: string; person: string; saved: number; embeddings: number }>(
+      '/api/enroll/save', {
+        method: 'POST',
+        body: JSON.stringify({ name, crops }),
+      }),
+
   // ── Enrollment ──
   prewarmEnrollment: (cameraId: number) =>
     apiFetch<{ status: string }>('/api/cameras/enrollment/prewarm', {

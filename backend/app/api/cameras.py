@@ -174,7 +174,7 @@ def recent_detections():
     from datetime import datetime, timezone, timedelta
     from ..models.senior import SeniorPresence
 
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
     presences = SeniorPresence.query.options(
         joinedload(SeniorPresence.senior),
         joinedload(SeniorPresence.camera),
@@ -190,7 +190,7 @@ def recent_detections():
             'person': p.senior.name if p.senior else 'Stranger',
             'personType': 'known' if p.status == 'identified' else 'unknown',
             'cameraName': cam.name if cam else '',
-            'confidence': 0,
+            'confidence': p.confidence or 0,
             'timestamp': (p.last_seen_at.isoformat() + 'Z')
             if p.last_seen_at else None,
             'crop': None,

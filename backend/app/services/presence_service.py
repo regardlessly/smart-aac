@@ -14,6 +14,7 @@ class PresenceService:
         room = camera.room
 
         for result in face_results:
+            score = result.get('score')
             if result['name'] == 'Stranger':
                 presence = SeniorPresence(
                     senior_id=None,
@@ -23,6 +24,7 @@ class PresenceService:
                     last_seen_at=now,
                     status='unidentified',
                     is_current=True,
+                    confidence=score,
                 )
                 session.add(presence)
             else:
@@ -56,11 +58,14 @@ class PresenceService:
                                 last_seen_at=now,
                                 status='identified',
                                 is_current=True,
+                                confidence=score,
                             )
                             session.add(presence)
                         else:
-                            # Same room — just update last_seen
+                            # Same room — just update last_seen + latest score
                             existing.last_seen_at = now
+                            if score is not None:
+                                existing.confidence = score
                     else:
                         presence = SeniorPresence(
                             senior_id=senior.id,
@@ -70,6 +75,7 @@ class PresenceService:
                             last_seen_at=now,
                             status='identified',
                             is_current=True,
+                            confidence=score,
                         )
                         session.add(presence)
 

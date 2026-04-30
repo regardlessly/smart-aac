@@ -33,5 +33,11 @@ pgdata/
 data/known_faces/.embedding_cache.npz
 data/output/
 
+# Local-only PII / model weights / backups (never push)
+data/known_faces/
+data/known_faces_archive/
+data/models/
+backend/db_backup.json
+
 # Logs
 /tmp/smart-aac-*.log

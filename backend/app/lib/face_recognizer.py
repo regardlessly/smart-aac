@@ -616,7 +616,7 @@ def annotate_frame(frame, face_results, camera_name='Camera',
 
 
 def auto_learn_face(frame, face_result, known_faces_dir, engine,
-                    max_per_person=15, auto_learn_threshold=0.50):
+                    max_per_person=15, auto_learn_threshold=0.65):
     """
     Save a high-confidence CCTV face crop as training data.
     Only saves KNOWN people — strangers are never auto-learned.
@@ -1574,7 +1574,7 @@ class FaceRecognizer:
                  on_person_detected=None, confidence_threshold=0.35,
                  capture_interval=2, analyse_every=5,
                  det_size=(640, 640), output_dir=None,
-                 auto_learn=True, auto_learn_threshold=0.45,
+                 auto_learn=True, auto_learn_threshold=0.65,
                  max_auto_learn_per_person=15,
                  save_captures=True):
         """
@@ -1610,6 +1610,9 @@ class FaceRecognizer:
         self._latest_frames = {}  # camera_name -> latest captured frame
         self._latest_results = {}  # camera_name -> (face_results, person_boxes)
         self._latest_frames_lock = threading.Lock()
+        # Watchdog support: last successful capture timestamp + thread-by-name
+        self._last_capture_time = {}  # camera_name -> epoch seconds
+        self._threads_by_name = {}    # camera_name -> Thread (the *current* live thread)
 
         self._output_dir = output_dir or tempfile.mkdtemp(prefix="face_recognizer_")
         os.makedirs(self._output_dir, exist_ok=True)
@@ -1683,13 +1686,15 @@ class FaceRecognizer:
 
         # Start a thread per camera
         for cam_cfg in self._cameras:
+            cam_name = cam_cfg.get('name', 'unknown')
             t = threading.Thread(
                 target=self._camera_loop,
                 args=(cam_cfg,),
                 daemon=True,
-                name=f"camera-{cam_cfg.get('name', 'unknown')}",
+                name=f"camera-{cam_name}",
             )
             self._threads.append(t)
+            self._threads_by_name[cam_name] = t
             t.start()
 
         logger.info("FaceRecognizer started with %d camera(s)", len(self._cameras))
@@ -1783,6 +1788,67 @@ class FaceRecognizer:
         with self._latest_frames_lock:
             return self._latest_results.get(camera_name)
 
+    def get_capture_age(self, camera_name):
+        """Return seconds since last successful capture for the camera.
+
+        Returns float('inf') if the camera has never produced a frame.
+        Used by the watchdog to detect stalled capture threads.
+        """
+        with self._latest_frames_lock:
+            ts = self._last_capture_time.get(camera_name)
+        if ts is None:
+            return float('inf')
+        return time.time() - ts
+
+    def get_camera_names(self):
+        """Return the list of configured camera names (for watchdog iteration)."""
+        return [c.get('name') for c in self._cameras if c.get('name')]
+
+    def respawn_camera_thread(self, camera_name):
+        """Spawn a fresh capture thread for a stalled camera.
+
+        The previous thread is left to die on its own — Python cannot safely
+        kill a thread blocked inside cv2/ffmpeg. The new thread will start
+        producing frames within seconds; subsequent writes to _latest_frames
+        will overwrite anything the old thread eventually emits.
+
+        Returns True if respawn succeeded, False if camera not found.
+        """
+        cam_cfg = next((c for c in self._cameras
+                        if c.get('name') == camera_name), None)
+        if cam_cfg is None:
+            logger.warning("[respawn] camera '%s' not in config", camera_name)
+            return False
+
+        # Clear cached frame so dashboard shows "no signal" until new frame lands
+        with self._latest_frames_lock:
+            self._latest_frames.pop(camera_name, None)
+            self._latest_results.pop(camera_name, None)
+            # Don't reset _last_capture_time — let watchdog see the gap until
+            # the new thread succeeds, otherwise we'd respawn-loop forever.
+
+        t = threading.Thread(
+            target=self._camera_loop,
+            args=(cam_cfg,),
+            daemon=True,
+            name=f"camera-{camera_name}-respawn-{int(time.time())}",
+        )
+        # Replace the registered thread reference. The old thread is leaked
+        # intentionally; it will exit when its current cv2 call finally
+        # times out (5-10s) and the next loop iteration sees stop_event.
+        # NOTE: stop_event is shared across all camera threads so we can't
+        # signal just this one. The old thread will keep running until shutdown
+        # or until its cv2 call returns and it loops to the next iteration.
+        old = self._threads_by_name.get(camera_name)
+        self._threads_by_name[camera_name] = t
+        self._threads.append(t)
+        t.start()
+        logger.warning(
+            "[respawn] %s — new thread %s started "
+            "(old thread %s left to die naturally)",
+            camera_name, t.name, old.name if old else 'n/a')
+        return True
+
     def _camera_loop(self, cam_cfg):
         """Internal camera thread: capture frames, analyse batches, fire callbacks."""
         camera_name = cam_cfg.get('name', 'Camera')
@@ -1842,6 +1908,7 @@ class FaceRecognizer:
             # Store latest frame for snapshot loop
             with self._latest_frames_lock:
                 self._latest_frames[camera_name] = frame.copy()
+                self._last_capture_time[camera_name] = time.time()
 
             # Trigger batch analysis
             if len(batch_frames) >= self._analyse_every:
@@ -1907,9 +1974,11 @@ class FaceRecognizer:
         self._cross_batch_reidentify(legacy_stats)
         self._session.sync_from_dict(legacy_stats)  # sync again after reclassifications
 
-        # Collect new detections for heatmap + timeline + callbacks
+        # Collect new detections for heatmap + timeline + callbacks.
+        # Snapshot via list() since other camera threads may concurrently mutate
+        # legacy_stats['person_timestamps'] (race observed in production).
         current_timestamps = legacy_stats.get('person_timestamps', {})
-        for label, ts_list in current_timestamps.items():
+        for label, ts_list in list(current_timestamps.items()):
             prev_count = prev_timestamps.get(label, 0)
             new_timestamps = ts_list[prev_count:]
 

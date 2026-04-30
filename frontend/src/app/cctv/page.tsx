@@ -42,6 +42,7 @@ export default function CCTVPage() {
   const [snapshots, setSnapshots] = useState<CCTVSnapshot[]>([])
   const [status, setStatus] = useState<FRStatus | null>(null)
   const [detections, setDetections] = useState<DetectionItem[]>([])
+  const [detFilter, setDetFilter] = useState<'all' | 'face' | 'identified' | 'conf30_40' | 'conf40_50' | 'conf50_100'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -111,7 +112,7 @@ export default function CCTVPage() {
           }
         }
         if (newItems.length === 0) return prev
-        return [...newItems, ...prev].slice(0, 50)
+        return [...newItems, ...prev].slice(0, 150)
       })
     } catch {
       // silent
@@ -148,7 +149,7 @@ export default function CCTVPage() {
         confidence: event.confidence || 0,
         timestamp: ts,
         crop: event.crop || null,
-      }, ...prev].slice(0, 50))
+      }, ...prev].slice(0, 150))
     }
     if (event.type === 'snapshot' && !snapThrottleRef.current) {
       // Delay slightly so all cameras in the batch have time to save
@@ -449,9 +450,27 @@ export default function CCTVPage() {
           <div className="grid grid-cols-12 gap-6">
             {/* Detection Events Feed */}
             <div className="col-span-8">
+              {(() => {
+                const filtered = detections.filter(d => {
+                  if (detFilter === 'face') return !!d.crop
+                  if (detFilter === 'identified') return d.personType === 'known'
+                  if (detFilter === 'conf30_40') return d.confidence >= 0.30 && d.confidence < 0.40
+                  if (detFilter === 'conf40_50') return d.confidence >= 0.40 && d.confidence < 0.50
+                  if (detFilter === 'conf50_100') return d.confidence >= 0.50 && d.confidence <= 1.00
+                  return true
+                })
+                const FILTER_BUTTONS: { key: typeof detFilter; label: string }[] = [
+                  { key: 'all', label: 'All' },
+                  { key: 'face', label: 'Has face' },
+                  { key: 'identified', label: 'Identified' },
+                  { key: 'conf30_40', label: '30–40%' },
+                  { key: 'conf40_50', label: '40–50%' },
+                  { key: 'conf50_100', label: '50–100%' },
+                ]
+                return (
               <Panel
                 title="Detection Events"
-                subtitle={`${detections.length} event${detections.length !== 1 ? 's' : ''} captured`}
+                subtitle={`${filtered.length} of ${detections.length} event${detections.length !== 1 ? 's' : ''} captured`}
                 action={
                   detections.length > 0 ? (
                     <button
@@ -463,15 +482,33 @@ export default function CCTVPage() {
                   ) : undefined
                 }
               >
+                {/* Filter chips */}
+                <div className="flex items-center gap-1.5 pb-2 border-b border-border mb-2 flex-wrap">
+                  {FILTER_BUTTONS.map(b => (
+                    <button
+                      key={b.key}
+                      onClick={() => setDetFilter(b.key)}
+                      className={`text-[11px] px-2 py-1 rounded-md font-medium transition-colors ${
+                        detFilter === b.key
+                          ? 'bg-primary text-white'
+                          : 'bg-surface text-muted hover:text-text hover:bg-border'
+                      }`}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="max-h-80 overflow-y-auto space-y-1">
-                  {detections.length === 0 ? (
+                  {filtered.length === 0 ? (
                     <div className="text-center py-8 text-muted text-sm">
-                      {isRunning
-                        ? 'Waiting for detection events...'
-                        : 'System offline — no events'}
+                      {detections.length === 0
+                        ? (isRunning
+                            ? 'Waiting for detection events...'
+                            : 'System offline — no events')
+                        : 'No events match the current filter'}
                     </div>
                   ) : (
-                    detections.map((d) => (
+                    [...filtered].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')).map((d) => (
                       <div
                         key={d.id}
                         className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface transition-colors"
@@ -520,6 +557,8 @@ export default function CCTVPage() {
                   )}
                 </div>
               </Panel>
+                )
+              })()}
             </div>
 
             {/* System Status */}
@@ -616,7 +655,11 @@ export default function CCTVPage() {
           {/* ── Expanded Camera Modal ────────────── */}
           {selectedCam && (() => {
             const snap = snapshotMap.get(selectedCam.id)
-            const camDetections = detections.filter(d => d.cameraName === selectedCam.name).slice(0, 10)
+            const camDetections = detections
+              .filter(d => d.cameraName === selectedCam.name)
+              .slice()
+              .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))
+              .slice(0, 10)
             return (
               <div
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
@@ -715,12 +758,17 @@ export default function CCTVPage() {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <span className="text-sm font-medium text-text">{d.person}</span>
-                                <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                                  d.personType === 'known' ? 'bg-green/10 text-green' : 'bg-coral/10 text-coral'
-                                }`}>
-                                  {d.personType === 'known' ? 'Known' : 'Unknown'}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-text">{d.person}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                    d.personType === 'known' ? 'bg-green/10 text-green' : 'bg-coral/10 text-coral'
+                                  }`}>
+                                    {d.personType === 'known' ? 'Known' : 'Unknown'}
+                                  </span>
+                                </div>
+                                {d.confidence > 0 && (
+                                  <div className="text-xs text-muted">{(d.confidence * 100).toFixed(0)}% confidence</div>
+                                )}
                               </div>
                               <span className="text-xs text-muted">{d.timestamp ? timeAgo(d.timestamp) : ''}</span>
                             </div>
