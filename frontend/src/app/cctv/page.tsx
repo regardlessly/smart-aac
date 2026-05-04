@@ -97,22 +97,32 @@ export default function CCTVPage() {
     try {
       const data = await api.recentDetections()
       setDetections(prev => {
-        // Merge: keep SSE detections (they have crops), add polled ones that are new
+        // Merge: keep SSE detections (they have crops), add polled ones that are truly new.
+        // Skip a polled entry if we already have a crop-bearing entry for that person+camera
+        // (the SSE version is better — it has the face crop image).
         const existingKeys = new Set(prev.map(d => `${d.person}-${d.timestamp}`))
+        const existingWithCrop = new Set(
+          prev.filter(d => d.crop).map(d => `${d.person}-${d.cameraName}`)
+        )
+        const seenPersonCam = new Set<string>()
         const newItems: DetectionItem[] = []
         for (const d of data) {
           const key = `${d.person}-${d.timestamp}`
-          if (!existingKeys.has(key) && !sseDetectionIds.current.has(key)) {
-            newItems.push({
-              id: nextId.current++,
-              person: d.person,
-              personType: d.personType,
-              cameraName: d.cameraName,
-              confidence: d.confidence,
-              timestamp: d.timestamp,
-              crop: d.crop,
-            })
-          }
+          const personCamKey = `${d.person}-${d.cameraName}`
+          if (existingKeys.has(key)) continue           // exact duplicate
+          if (sseDetectionIds.current.has(key)) continue // already from SSE
+          if (existingWithCrop.has(personCamKey)) continue // SSE version with crop exists
+          if (seenPersonCam.has(personCamKey)) continue   // dedup within polled batch
+          seenPersonCam.add(personCamKey)
+          newItems.push({
+            id: nextId.current++,
+            person: d.person,
+            personType: d.personType,
+            cameraName: d.cameraName,
+            confidence: d.confidence,
+            timestamp: d.timestamp,
+            crop: d.crop,
+          })
         }
         if (newItems.length === 0) return prev
         return [...newItems, ...prev].slice(0, 150)
@@ -144,7 +154,7 @@ export default function CCTVPage() {
       const ts = event.timestamp || new Date().toISOString()
       const key = `${event.person}-${ts}`
       sseDetectionIds.current.add(key)
-      setDetections(prev => [{
+      const sseEntry: DetectionItem = {
         id: nextId.current++,
         person: event.person!,
         personType: (event.person_type as 'known' | 'unknown') || 'unknown',
@@ -152,7 +162,15 @@ export default function CCTVPage() {
         confidence: event.confidence || 0,
         timestamp: ts,
         crop: event.crop || null,
-      }, ...prev].slice(0, 150))
+      }
+      setDetections(prev => {
+        // Drop any existing crop-less entry for this person+camera (came from polling).
+        // The SSE entry is always fresher and carries the face crop.
+        const filtered = sseEntry.crop
+          ? prev.filter(d => !(d.person === sseEntry.person && d.cameraName === sseEntry.cameraName && !d.crop))
+          : prev
+        return [sseEntry, ...filtered].slice(0, 150)
+      })
     }
     if (event.type === 'snapshot') {
       // Clear reconnecting state for this camera once a fresh snapshot arrives
