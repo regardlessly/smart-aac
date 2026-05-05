@@ -1027,15 +1027,25 @@ class FaceRecognitionService:
         time.sleep(60)  # let cameras initialise before judging staleness
         logger.info('Camera watchdog active')
 
-        STALE_THRESHOLD = 180   # seconds — capture cadence is ~50s/cam currently
-        CHECK_INTERVAL = 30     # seconds between watchdog passes
+        STALE_THRESHOLD = 600   # seconds — must miss ~12 consecutive captures to trigger
+        CHECK_INTERVAL = 60     # seconds between watchdog passes
         # Per-camera cooldown: don't respawn the same cam more than once
         # every COOLDOWN seconds (prevents respawn storm if NVR is down)
-        COOLDOWN = 120
+        # Long cooldown also limits zombie thread accumulation over time
+        COOLDOWN = 600
         last_respawn = {}  # camera_name -> epoch ts
 
         while cls._running:
             try:
+                # Warn if thread count is growing dangerously (zombie thread leak)
+                import threading as _threading
+                live_threads = _threading.active_count()
+                if live_threads > 400:
+                    logger.warning(
+                        '[watchdog] ⚠️  %d active threads — zombie leak detected. '
+                        'Restart backend to recover memory.',
+                        live_threads)
+
                 with cls._lock:
                     instance = cls._instance
                 if instance is None:
