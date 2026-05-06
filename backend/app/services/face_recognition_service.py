@@ -994,7 +994,9 @@ class FaceRecognitionService:
 
                 db.session.commit()
 
-                # Push SSE event
+                # Push SSE event — always use UTC+Z so the browser parses
+                # it unambiguously regardless of its local timezone.
+                from datetime import datetime as _dt, timezone as _tz
                 push_event({
                     'type': 'detection',
                     'camera_id': camera_id,
@@ -1002,7 +1004,7 @@ class FaceRecognitionService:
                     'person': event.get('person', ''),
                     'person_type': event.get('type', ''),
                     'confidence': event.get('confidence', 0),
-                    'timestamp': event.get('timestamp', ''),
+                    'timestamp': _dt.now(_tz.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                     'crop': event.get('crop'),
                 })
 
